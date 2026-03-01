@@ -1,7 +1,8 @@
 defmodule Decidulixir.Graph.GraphEdgeTest do
   use Decidulixir.DataCase, async: true
 
-  alias Decidulixir.Graph.{Node, GraphEdge}
+  alias Decidulixir.Graph.GraphEdge
+  alias Decidulixir.Graph.Node
   alias Decidulixir.Repo
 
   defp create_node!(attrs \\ %{}) do

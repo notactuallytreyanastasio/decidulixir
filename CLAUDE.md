@@ -262,3 +262,147 @@ deciduous events checkpoint --clear-events
 ```
 
 Events auto-emit on add/link/status commands. Git merges event files automatically.
+
+## Design Philosophy
+
+### Functional core, imperative shell
+
+Structure every application as a **pure functional core** wrapped by a **thin imperative shell**.
+
+- **Functional core**: Pure functions that take data in, return data out. No side effects, no process state, no I/O. All business rules, data transformations, and validations live here. These functions are trivially testable -- pass in structs, assert on returned structs.
+- **Imperative shell**: LiveViews, GenServers, controllers, Ecto operations, external API calls. The shell orchestrates side effects and calls into the functional core. Keep it as thin as possible.
+
+### Type-first design
+
+Always start by defining types that expose boundaries and compose into explicit contracts. Before writing implementation, define the `@type`, `@typedoc`, `defstruct`, and `@spec` that describe data flowing through the system.
+
+**In practice, for every new module:**
+
+1. Define `@type t` -- what IS this thing?
+2. Define `defstruct` with defaults -- what fields does it have?
+3. Define `@spec` on public functions -- what goes in, what comes out?
+4. THEN write the implementation
+
+### No OO constructors
+
+Do NOT create `.new()` constructor functions. Elixir structs are data -- construct them directly with `%Module{field: value}`. The `defstruct` defaults are the single source of truth.
+
+## Work Transactions -- ALWAYS USE /work
+
+**Every meaningful unit of work MUST start with `/work "description"`.** A "meaningful unit" is any change a future session would want to understand. Only trivial one-line typo fixes skip this.
+
+### Flow
+
+1. User asks for something (or you identify work)
+2. `/work "short description"` -- creates a goal node with verbatim user request
+3. Before each file edit, create an action node linked to the goal
+4. After completing work, create an outcome node, commit, link with `--commit HEAD`
+5. `deciduous sync` to export
+
+### Multiple changes = multiple transactions
+
+```
+User: "fix the tile contrast and slow down the scanner"
+
+-> /work "Fix light tile contrast"    # goal + actions + outcome + commit
+-> /work "Slow scanner speed 8x"     # separate goal + actions + outcome + commit
+```
+
+One `/work` = one logical change = one commit.
+
+## Rebase Only -- No Merge Commits
+
+**ALWAYS** rebase. Never `git merge`. History must be linear.
+
+## Project Guidelines
+
+- Use `mix precommit` alias to verify all changes before committing
+- Use `:req` (`Req`) for HTTP requests. Never use `:httpoison`, `:tesla`, or `:httpc`
+
+### Phoenix v1.8
+
+- LiveView templates start with `<Layouts.app flash={@flash} ...>` wrapping all content. `Layouts` is already aliased in the app web module
+- `current_scope` errors mean your routes are in the wrong `live_session` or you forgot to pass `current_scope` to `<Layouts.app>`
+- `<.flash_group>` lives in `Layouts` only -- never call it elsewhere
+- Use `<.icon name="hero-x-mark" class="w-5 h-5"/>` for icons (from `core_components.ex`). Never use `Heroicons` modules
+- Use `<.input>` for form inputs (imported from `core_components.ex`). When overriding classes, no defaults are inherited -- you must fully style the input
+
+### JS & CSS
+
+- Tailwind CSS v4: no `tailwind.config.js`. Uses import syntax in `app.css`
+- Never use `@apply` in raw CSS
+- Only `app.js` and `app.css` bundles exist. Import vendor deps into these files. No external `<script src>` or `<link href>` in layouts. No inline `<script>` tags in templates
+
+## Elixir guidelines
+
+- Elixir lists **do not support index based access via the access syntax**. **Always** use `Enum.at`, pattern matching, or `List` for index based list access
+- Elixir variables are immutable, but can be rebound. Block expressions like `if`, `case`, `cond` must bind the result to a variable
+- **Never** nest multiple modules in the same file as it can cause cyclic dependencies
+- **Never** use map access syntax (`changeset[:field]`) on structs. Use dot access or `Ecto.Changeset.get_field/2`
+- Don't use `String.to_atom/1` on user input (memory leak risk)
+- Predicate function names should end in `?`, not start with `is_`. Reserve `is_` for guards
+- OTP primitives like `DynamicSupervisor` and `Registry` require names in the child spec
+- Use `Task.async_stream/3` for concurrent enumeration with back-pressure. Almost always pass `timeout: :infinity`
+
+## Mix guidelines
+
+- Read the docs and options before using tasks (by using `mix help task_name`)
+- To debug test failures, run tests in a specific file with `mix test test/my_test.exs` or run all previously failed tests with `mix test --failed`
+- `mix deps.clean --all` is **almost never needed**. **Avoid** using it
+
+## Test guidelines
+
+- **Always use `start_supervised!/1`** to start processes in tests as it guarantees cleanup between tests
+- **Avoid** `Process.sleep/1` and `Process.alive?/1` in tests
+- Use `Process.monitor/1` and assert on the DOWN message instead of sleep
+- Use `_ = :sys.get_state/1` to synchronize before the next call
+
+## Phoenix guidelines
+
+- Router `scope` blocks include an optional alias prefixed for all routes within. **Always** be mindful of this
+- You **never** need to create your own `alias` for route definitions -- the `scope` provides the alias
+- `Phoenix.View` no longer exists. Don't use it
+
+## Ecto Guidelines
+
+- **Always** preload Ecto associations in queries when they'll be accessed in templates
+- `Ecto.Schema` fields always use the `:string` type, even for `:text` columns
+- `Ecto.Changeset.validate_number/2` **DOES NOT SUPPORT the `:allow_nil` option**
+- You **must** use `Ecto.Changeset.get_field(changeset, :field)` to access changeset fields
+- Fields set programmatically (like `user_id`) must not be listed in `cast` calls for security
+- **Always** invoke `mix ecto.gen.migration migration_name_using_underscores` when generating migration files
+
+## Phoenix HTML guidelines
+
+- Phoenix templates **always** use `~H` or .html.heex files (HEEx), **never** use `~E`
+- **Always** use `Phoenix.Component.form/1` and `Phoenix.Component.inputs_for/1`. **Never** use `Phoenix.HTML.form_for` or `Phoenix.HTML.inputs_for`
+- **Always** use `Phoenix.Component.to_form/2` and `<.form for={@form}>`. Never pass changesets directly to templates
+- **Always** add unique DOM IDs to key elements (forms, buttons, etc.)
+- **Never** use `else if` or `elsif` in Elixir. Use `cond` or `case`
+- HEEx class attrs support lists with conditional syntax: `class={["px-2", @flag && "py-5"]}`
+- **Never** use `<% Enum.each %>`. Use `<%= for item <- @collection do %>`
+- HEEx HTML comments: `<%!-- comment --%>`
+- Use `{...}` for interpolation within tag attributes and tag bodies. Use `<%= ... %>` for block constructs (if, cond, case, for)
+
+## Phoenix LiveView guidelines
+
+- **Never** use deprecated `live_redirect` and `live_patch`. Use `<.link navigate={href}>` and `<.link patch={href}>`
+- **Avoid LiveComponent's** unless you have a strong, specific need
+- LiveViews should be named with a `Live` suffix: `DecidulixirWeb.GraphLive`
+- **Always** use LiveView streams for collections (never assign raw lists -- they balloon memory)
+- LiveView streams are *not* enumerable -- refetch and use `reset: true` to filter
+- Streams don't support counting -- track with separate assign
+- When updating an assign inside stream items, re-stream them
+- **Never** use deprecated `phx-update="append"` or `phx-update="prepend"`
+- Use colocated js hooks (`:type={Phoenix.LiveView.ColocatedHook}`) -- never raw `<script>` tags
+- Colocated hook names **MUST** start with `.` prefix: `.PhoneNumber`
+- External hooks in `assets/js/`, pass to `LiveSocket` constructor
+- **Always** use `to_form/2` and `<.form for={@form}>`. **Never** use `<.form let={f}>`
+
+## Code Quality
+
+- `mix precommit` runs: compile (warnings-as-errors), credo --strict, test, dialyzer, format
+- Eliminate every compiler warning
+- Credo strict mode -- follow every rule
+- Write pure functions that are easy to test
+- TDD: test first, strict test-driven development

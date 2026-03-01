@@ -1,7 +1,9 @@
 defmodule Decidulixir.Graph.ConversationNodeSetTest do
   use Decidulixir.DataCase, async: true
 
-  alias Decidulixir.Graph.{Node, ConversationNodeSet, NodeConversationNodeSet}
+  alias Decidulixir.Graph.ConversationNodeSet
+  alias Decidulixir.Graph.Node
+  alias Decidulixir.Graph.NodeConversationNodeSet
   alias Decidulixir.Repo
 
   defp create_node!(attrs \\ %{}) do

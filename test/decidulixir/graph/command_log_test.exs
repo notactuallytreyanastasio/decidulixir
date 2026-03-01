@@ -1,7 +1,8 @@
 defmodule Decidulixir.Graph.CommandLogTest do
   use Decidulixir.DataCase, async: true
 
-  alias Decidulixir.Graph.{Node, CommandLog}
+  alias Decidulixir.Graph.CommandLog
+  alias Decidulixir.Graph.Node
   alias Decidulixir.Repo
 
   describe "changeset/2" do

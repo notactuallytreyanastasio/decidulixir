@@ -8,7 +8,8 @@ defmodule Decidulixir.Graph.NodeConversationNodeSet do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Decidulixir.Graph.{Node, ConversationNodeSet}
+  alias Decidulixir.Graph.ConversationNodeSet
+  alias Decidulixir.Graph.Node
 
   @type t :: %__MODULE__{
           conversation_node_set_id: integer(),
