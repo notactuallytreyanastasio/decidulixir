@@ -1,7 +1,8 @@
 defmodule Decidulixir.Graph.GraphDocumentTest do
   use Decidulixir.DataCase, async: true
 
-  alias Decidulixir.Graph.{Node, GraphDocument}
+  alias Decidulixir.Graph.GraphDocument
+  alias Decidulixir.Graph.Node
   alias Decidulixir.Repo
 
   defp create_node! do
