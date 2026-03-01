@@ -1,8 +1,8 @@
-defmodule Decidulixir.Repo.Migrations.CreateGithubIssueCache do
+defmodule Decidulixir.Repo.Migrations.CreateGithubIssues do
   use Ecto.Migration
 
   def change do
-    create table(:github_issue_cache) do
+    create table(:github_issues) do
       add :issue_number, :integer, null: false
       add :repo, :string, null: false
       add :title, :string, null: false
@@ -14,6 +14,6 @@ defmodule Decidulixir.Repo.Migrations.CreateGithubIssueCache do
       add :cached_at, :utc_datetime, null: false
     end
 
-    create unique_index(:github_issue_cache, [:issue_number, :repo])
+    create unique_index(:github_issues, [:issue_number, :repo])
   end
 end

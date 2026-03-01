@@ -1,7 +1,7 @@
-defmodule Decidulixir.Graph.EdgeTest do
+defmodule Decidulixir.Graph.GraphEdgeTest do
   use Decidulixir.DataCase, async: true
 
-  alias Decidulixir.Graph.{Node, Edge}
+  alias Decidulixir.Graph.{Node, GraphEdge}
   alias Decidulixir.Repo
 
   defp create_node!(attrs \\ %{}) do
@@ -15,7 +15,7 @@ defmodule Decidulixir.Graph.EdgeTest do
       node1 = create_node!(%{title: "From"})
       node2 = create_node!(%{title: "To"})
 
-      changeset = Edge.changeset(%Edge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+      changeset = GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
       assert changeset.valid?
     end
 
@@ -23,21 +23,21 @@ defmodule Decidulixir.Graph.EdgeTest do
       node1 = create_node!()
       node2 = create_node!(%{title: "Other"})
 
-      changeset = Edge.changeset(%Edge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+      changeset = GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
       assert Ecto.Changeset.get_field(changeset, :edge_type) == :leads_to
     end
 
     test "rejects self-links" do
       node = create_node!()
 
-      changeset = Edge.changeset(%Edge{}, %{from_node_id: node.id, to_node_id: node.id})
+      changeset = GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node.id, to_node_id: node.id})
       refute changeset.valid?
       assert errors_on(changeset)[:to_node_id]
     end
 
     test "invalid without from_node_id" do
       node = create_node!()
-      changeset = Edge.changeset(%Edge{}, %{to_node_id: node.id})
+      changeset = GraphEdge.changeset(%GraphEdge{}, %{to_node_id: node.id})
       refute changeset.valid?
     end
 
@@ -46,7 +46,7 @@ defmodule Decidulixir.Graph.EdgeTest do
       node2 = create_node!(%{title: "Other"})
 
       changeset =
-        Edge.changeset(%Edge{}, %{
+        GraphEdge.changeset(%GraphEdge{}, %{
           from_node_id: node1.id,
           to_node_id: node2.id,
           rationale: "Because reasons",
@@ -65,8 +65,8 @@ defmodule Decidulixir.Graph.EdgeTest do
       node2 = create_node!(%{title: "Option", node_type: :option})
 
       {:ok, edge} =
-        %Edge{}
-        |> Edge.changeset(%{
+        %GraphEdge{}
+        |> GraphEdge.changeset(%{
           from_node_id: node1.id,
           to_node_id: node2.id,
           rationale: "possible approach"
@@ -78,18 +78,18 @@ defmodule Decidulixir.Graph.EdgeTest do
       assert edge.to_node_id == node2.id
       assert edge.edge_type == :leads_to
 
-      fetched = Repo.get!(Edge, edge.id)
+      fetched = Repo.get!(GraphEdge, edge.id)
       assert fetched.rationale == "possible approach"
     end
 
     test "insert all edge types" do
-      for edge_type <- Decidulixir.Types.edge_types() do
+      for edge_type <- GraphEdge.edge_types() do
         node1 = create_node!(%{title: "From #{edge_type}"})
         node2 = create_node!(%{title: "To #{edge_type}"})
 
         {:ok, edge} =
-          %Edge{}
-          |> Edge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: edge_type})
+          %GraphEdge{}
+          |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: edge_type})
           |> Repo.insert()
 
         assert edge.edge_type == edge_type
@@ -101,12 +101,12 @@ defmodule Decidulixir.Graph.EdgeTest do
       node2 = create_node!(%{title: "Stays"})
 
       {:ok, edge} =
-        %Edge{}
-        |> Edge.changeset(%{from_node_id: node1.id, to_node_id: node2.id})
+        %GraphEdge{}
+        |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id})
         |> Repo.insert()
 
       Repo.delete!(node1)
-      assert Repo.get(Edge, edge.id) == nil
+      assert Repo.get(GraphEdge, edge.id) == nil
     end
 
     test "enforces unique constraint on from/to/type" do
@@ -114,13 +114,13 @@ defmodule Decidulixir.Graph.EdgeTest do
       node2 = create_node!(%{title: "B"})
 
       {:ok, _} =
-        %Edge{}
-        |> Edge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
+        %GraphEdge{}
+        |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
         |> Repo.insert()
 
       {:error, changeset} =
-        %Edge{}
-        |> Edge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
+        %GraphEdge{}
+        |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
         |> Repo.insert()
 
       assert errors_on(changeset)[:from_node_id] || errors_on(changeset)[:to_node_id]

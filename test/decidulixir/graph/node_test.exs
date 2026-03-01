@@ -46,11 +46,11 @@ defmodule Decidulixir.Graph.NodeTest do
       assert Ecto.Changeset.get_field(changeset, :status) == :active
     end
 
-    test "accepts metadata_json as map" do
+    test "accepts metadata as map" do
       meta = %{"confidence" => 90, "branch" => "main", "commit" => "abc123"}
-      changeset = Node.changeset(%Node{}, %{node_type: :action, title: "Test", metadata_json: meta})
+      changeset = Node.changeset(%Node{}, %{node_type: :action, title: "Test", metadata: meta})
       assert changeset.valid?
-      assert Ecto.Changeset.get_field(changeset, :metadata_json) == meta
+      assert Ecto.Changeset.get_field(changeset, :metadata) == meta
     end
   end
 
@@ -73,7 +73,7 @@ defmodule Decidulixir.Graph.NodeTest do
     end
 
     test "insert all node types" do
-      for type <- Decidulixir.Types.node_types() do
+      for type <- Node.node_types() do
         {:ok, node} =
           %Node{}
           |> Node.changeset(%{node_type: type, title: "#{type} node"})
@@ -97,17 +97,17 @@ defmodule Decidulixir.Graph.NodeTest do
       assert updated.status == :superseded
     end
 
-    test "metadata_json stores and retrieves correctly" do
+    test "metadata stores and retrieves correctly" do
       meta = %{"confidence" => 85, "files" => ["lib/foo.ex", "lib/bar.ex"], "branch" => "feature"}
 
       {:ok, node} =
         %Node{}
-        |> Node.changeset(%{node_type: :action, title: "Test", metadata_json: meta})
+        |> Node.changeset(%{node_type: :action, title: "Test", metadata: meta})
         |> Repo.insert()
 
       fetched = Repo.get!(Node, node.id)
-      assert fetched.metadata_json["confidence"] == 85
-      assert fetched.metadata_json["files"] == ["lib/foo.ex", "lib/bar.ex"]
+      assert fetched.metadata["confidence"] == 85
+      assert fetched.metadata["files"] == ["lib/foo.ex", "lib/bar.ex"]
     end
 
     test "delete a node" do

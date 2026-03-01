@@ -1,13 +1,24 @@
-defmodule Decidulixir.Graph.Document do
+defmodule Decidulixir.Graph.GraphDocument do
   @moduledoc """
-  Ecto schema for file attachments on decision nodes.
+  File attachment on a decision node.
 
-  Documents are content-hash deduplicated: the same file attached to
-  multiple nodes is stored once on disk.
+  Supports pluggable storage backends. Files are content-hash
+  deduplicated: the same file attached to multiple nodes is stored once.
+
+  Storage backends:
+  - `:local` (default) — files stored in `.deciduous/documents/`
+  - `:s3` — files stored in configured S3 bucket (future)
+
+  Configure via:
+
+      config :decidulixir, :document_storage,
+        backend: :local,
+        path: ".deciduous/documents"
   """
 
   use Ecto.Schema
   import Ecto.Changeset
+  import Decidulixir.Graph.ChangesetHelpers
 
   alias Decidulixir.Graph.Node
 
@@ -19,6 +30,7 @@ defmodule Decidulixir.Graph.Document do
           content_hash: String.t(),
           original_filename: String.t(),
           storage_filename: String.t(),
+          storage_backend: String.t(),
           mime_type: String.t(),
           file_size: integer(),
           description: String.t() | nil,
@@ -28,13 +40,14 @@ defmodule Decidulixir.Graph.Document do
           detached_at: DateTime.t() | nil
         }
 
-  schema "node_documents" do
+  schema "graph_documents" do
     field :change_id, Ecto.UUID
     belongs_to :node, Node, foreign_key: :node_id
     field :node_change_id, Ecto.UUID
     field :content_hash, :string
     field :original_filename, :string
     field :storage_filename, :string
+    field :storage_backend, :string, default: "local"
     field :mime_type, :string
     field :file_size, :integer
     field :description, :string
@@ -44,32 +57,19 @@ defmodule Decidulixir.Graph.Document do
     field :detached_at, :utc_datetime
   end
 
-  @required_fields ~w(node_id node_change_id content_hash original_filename storage_filename mime_type file_size)a
-  @optional_fields ~w(change_id description description_source attached_at attached_by detached_at)a
+  @required ~w(node_id node_change_id content_hash original_filename storage_filename mime_type file_size)a
+  @optional ~w(change_id storage_backend description description_source attached_at attached_by detached_at)a
 
   @spec changeset(t() | Ecto.Changeset.t(), map()) :: Ecto.Changeset.t()
   def changeset(doc, attrs) do
     doc
-    |> cast(attrs, @required_fields ++ @optional_fields)
-    |> validate_required(@required_fields)
+    |> cast(attrs, @required ++ @optional)
+    |> validate_required(@required)
     |> validate_inclusion(:description_source, ~w(manual ai filename))
+    |> validate_inclusion(:storage_backend, ~w(local s3))
     |> validate_number(:file_size, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:node_id)
     |> maybe_generate_change_id()
-    |> maybe_set_attached_at()
-  end
-
-  defp maybe_generate_change_id(changeset) do
-    case get_field(changeset, :change_id) do
-      nil -> put_change(changeset, :change_id, Ecto.UUID.generate())
-      _ -> changeset
-    end
-  end
-
-  defp maybe_set_attached_at(changeset) do
-    case get_field(changeset, :attached_at) do
-      nil -> put_change(changeset, :attached_at, DateTime.utc_now() |> DateTime.truncate(:second))
-      _ -> changeset
-    end
+    |> maybe_set_timestamp(:attached_at)
   end
 end
