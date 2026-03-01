@@ -1,6 +1,9 @@
-defmodule Decidulixir.GitHub.IssueCache do
+defmodule Decidulixir.Github.Issue do
   @moduledoc """
-  Local cache for GitHub issue data, used by the web viewer.
+  Cached GitHub issue data for linking to decision graph nodes.
+
+  Stores issue metadata fetched via the `gh` CLI so it can be
+  displayed in the graph viewer without repeated API calls.
   """
 
   use Ecto.Schema
@@ -14,12 +17,12 @@ defmodule Decidulixir.GitHub.IssueCache do
           body: String.t() | nil,
           state: String.t(),
           html_url: String.t(),
-          created_at: DateTime.t(),
-          updated_at: DateTime.t(),
+          created_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil,
           cached_at: DateTime.t()
         }
 
-  schema "github_issue_cache" do
+  schema "github_issues" do
     field :issue_number, :integer
     field :repo, :string
     field :title, :string
@@ -31,23 +34,14 @@ defmodule Decidulixir.GitHub.IssueCache do
     field :cached_at, :utc_datetime
   end
 
-  @required_fields ~w(issue_number repo title state html_url)a
-  @optional_fields ~w(body created_at updated_at cached_at)a
+  @required ~w(issue_number repo title state html_url cached_at)a
+  @optional ~w(body created_at updated_at)a
 
   @spec changeset(t() | Ecto.Changeset.t(), map()) :: Ecto.Changeset.t()
   def changeset(issue, attrs) do
     issue
-    |> cast(attrs, @required_fields ++ @optional_fields)
-    |> validate_required(@required_fields)
-    |> validate_inclusion(:state, ~w(open closed))
+    |> cast(attrs, @required ++ @optional)
+    |> validate_required(@required)
     |> unique_constraint([:issue_number, :repo])
-    |> maybe_set_cached_at()
-  end
-
-  defp maybe_set_cached_at(changeset) do
-    case get_field(changeset, :cached_at) do
-      nil -> put_change(changeset, :cached_at, DateTime.utc_now() |> DateTime.truncate(:second))
-      _ -> changeset
-    end
   end
 end

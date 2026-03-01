@@ -37,3 +37,6 @@ npm-debug.log
 
 # Deciduous database (local)
 .deciduous/
+
+# CACHE documents (generated, stored in priv/static/claude_docs/)
+priv/static/claude_docs/*

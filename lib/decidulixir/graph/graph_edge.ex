@@ -1,15 +1,14 @@
-defmodule Decidulixir.Graph.Edge do
+defmodule Decidulixir.Graph.GraphEdge do
   @moduledoc """
-  Ecto schema for decision graph edges.
-
-  Connects two nodes with a typed relationship and optional rationale.
+  Typed edge connecting two graph nodes with optional rationale.
   """
 
   use Ecto.Schema
   import Ecto.Changeset
 
   alias Decidulixir.Graph.Node
-  alias Decidulixir.Types
+
+  @edge_types ~w(leads_to requires chosen rejected blocks enables)a
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -17,34 +16,34 @@ defmodule Decidulixir.Graph.Edge do
           to_node_id: integer(),
           from_change_id: Ecto.UUID.t() | nil,
           to_change_id: Ecto.UUID.t() | nil,
-          edge_type: Types.edge_type(),
+          edge_type: atom(),
           weight: float() | nil,
           rationale: String.t() | nil,
           inserted_at: DateTime.t() | nil
         }
 
-  schema "decision_edges" do
+  schema "graph_edges" do
     belongs_to :from_node, Node, foreign_key: :from_node_id
     belongs_to :to_node, Node, foreign_key: :to_node_id
     field :from_change_id, Ecto.UUID
     field :to_change_id, Ecto.UUID
-    field :edge_type, Ecto.Enum, values: Types.edge_types(), default: :leads_to
+    field :edge_type, Ecto.Enum, values: @edge_types, default: :leads_to
     field :weight, :float, default: 1.0
     field :rationale, :string
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
 
-  @required_fields ~w(from_node_id to_node_id)a
-  @optional_fields ~w(from_change_id to_change_id edge_type weight rationale)a
+  def edge_types, do: @edge_types
 
-  @doc "Changeset for creating an edge."
+  @required ~w(from_node_id to_node_id)a
+  @optional ~w(from_change_id to_change_id edge_type weight rationale)a
+
   @spec changeset(t() | Ecto.Changeset.t(), map()) :: Ecto.Changeset.t()
   def changeset(edge, attrs) do
     edge
-    |> cast(attrs, @required_fields ++ @optional_fields)
-    |> validate_required(@required_fields)
-    |> validate_inclusion(:edge_type, Types.edge_types())
+    |> cast(attrs, @required ++ @optional)
+    |> validate_required(@required)
     |> foreign_key_constraint(:from_node_id)
     |> foreign_key_constraint(:to_node_id)
     |> unique_constraint([:from_node_id, :to_node_id, :edge_type])

@@ -1,8 +1,9 @@
-defmodule Decidulixir.Graph.Session do
+defmodule Decidulixir.Graph.ConversationNodeSet do
   @moduledoc """
-  Ecto schema for decision sessions.
+  A grouping of related decision graph nodes from a single working session.
 
-  A session groups a set of related nodes created during a work period.
+  Tracks which nodes were created or discussed together, providing
+  chronological context for how work progressed.
   """
 
   use Ecto.Schema
@@ -19,7 +20,7 @@ defmodule Decidulixir.Graph.Session do
           summary: String.t() | nil
         }
 
-  schema "decision_sessions" do
+  schema "conversation_node_sets" do
     field :name, :string
     field :started_at, :utc_datetime
     field :ended_at, :utc_datetime
@@ -27,18 +28,14 @@ defmodule Decidulixir.Graph.Session do
     field :summary, :string
   end
 
-  @spec changeset(t() | Ecto.Changeset.t(), map()) :: Ecto.Changeset.t()
-  def changeset(session, attrs) do
-    session
-    |> cast(attrs, ~w(name started_at ended_at root_node_id summary)a)
-    |> maybe_set_started_at()
-    |> foreign_key_constraint(:root_node_id)
-  end
+  @required ~w(started_at)a
+  @optional ~w(name ended_at root_node_id summary)a
 
-  defp maybe_set_started_at(changeset) do
-    case get_field(changeset, :started_at) do
-      nil -> put_change(changeset, :started_at, DateTime.utc_now() |> DateTime.truncate(:second))
-      _ -> changeset
-    end
+  @spec changeset(t() | Ecto.Changeset.t(), map()) :: Ecto.Changeset.t()
+  def changeset(set, attrs) do
+    set
+    |> cast(attrs, @required ++ @optional)
+    |> validate_required(@required)
+    |> foreign_key_constraint(:root_node_id)
   end
 end
