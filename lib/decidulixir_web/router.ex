@@ -18,12 +18,18 @@ defmodule DecidulixirWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/graph", GraphLive.Index, :index
+    live "/graph/:id", GraphLive.Show, :show
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", DecidulixirWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", DecidulixirWeb.API do
+    pipe_through :api
+
+    get "/graph", GraphController, :index
+    get "/graph/stats", GraphController, :stats
+    get "/graph/:id", GraphController, :show
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:decidulixir, :dev_routes) do
