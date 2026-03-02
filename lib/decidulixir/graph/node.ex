@@ -13,9 +13,9 @@ defmodule Decidulixir.Graph.Node do
 
   @type t :: %__MODULE__{
           id: integer() | nil,
-          change_id: Ecto.UUID.t(),
-          node_type: atom(),
-          title: String.t(),
+          change_id: Ecto.UUID.t() | nil,
+          node_type: atom() | nil,
+          title: String.t() | nil,
           description: String.t() | nil,
           status: atom(),
           metadata: map() | nil,
