@@ -24,18 +24,18 @@ defmodule Decidulixir.Graph.GraphDocument do
 
   @type t :: %__MODULE__{
           id: integer() | nil,
-          change_id: Ecto.UUID.t(),
-          node_id: integer(),
-          node_change_id: Ecto.UUID.t(),
-          content_hash: String.t(),
-          original_filename: String.t(),
-          storage_filename: String.t(),
+          change_id: Ecto.UUID.t() | nil,
+          node_id: integer() | nil,
+          node_change_id: Ecto.UUID.t() | nil,
+          content_hash: String.t() | nil,
+          original_filename: String.t() | nil,
+          storage_filename: String.t() | nil,
           storage_backend: String.t(),
-          mime_type: String.t(),
-          file_size: integer(),
+          mime_type: String.t() | nil,
+          file_size: integer() | nil,
           description: String.t() | nil,
           description_source: String.t(),
-          attached_at: DateTime.t(),
+          attached_at: DateTime.t() | nil,
           attached_by: String.t() | nil,
           detached_at: DateTime.t() | nil
         }
