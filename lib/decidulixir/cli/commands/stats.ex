@@ -21,7 +21,12 @@ defmodule Decidulixir.CLI.Commands.Stats do
 
   @impl true
   def execute(%{json: true}) do
-    IO.puts(Jason.encode!(%{totals: Graph.graph_stats(), by_type: Graph.node_counts_by_type()}, pretty: true))
+    IO.puts(
+      Jason.encode!(%{totals: Graph.graph_stats(), by_type: Graph.node_counts_by_type()},
+        pretty: true
+      )
+    )
+
     :ok
   end
 

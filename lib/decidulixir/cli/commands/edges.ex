@@ -7,6 +7,9 @@ defmodule Decidulixir.CLI.Commands.Edges do
 
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
+  alias Decidulixir.Graph.GraphEdge
+
+  @edge_type_strings Map.new(GraphEdge.edge_types(), fn t -> {Atom.to_string(t), t} end)
 
   @impl true
   def name, do: "edges"
@@ -53,5 +56,5 @@ defmodule Decidulixir.CLI.Commands.Edges do
   end
 
   defp to_filters(%{type: nil}), do: []
-  defp to_filters(%{type: t}), do: [edge_type: String.to_existing_atom(t)]
+  defp to_filters(%{type: t}), do: [edge_type: Map.get(@edge_type_strings, t, :leads_to)]
 end

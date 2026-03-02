@@ -14,7 +14,10 @@ defmodule Decidulixir.GraphTest do
   defp create_linked_pair do
     goal = create_node(%{node_type: :goal, title: "Root Goal"})
     option = create_node(%{node_type: :option, title: "Option A"})
-    {:ok, edge} = Graph.create_edge(goal.id, option.id, %{edge_type: :leads_to, rationale: "test"})
+
+    {:ok, edge} =
+      Graph.create_edge(goal.id, option.id, %{edge_type: :leads_to, rationale: "test"})
+
     {goal, option, edge}
   end
 

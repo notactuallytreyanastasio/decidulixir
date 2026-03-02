@@ -37,8 +37,8 @@ defmodule Decidulixir.CLI.Formatter do
   @spec format_changeset_errors(Ecto.Changeset.t()) :: String.t()
   def format_changeset_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
+      Enum.reduce(opts, msg, fn {key, val}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(val))
       end)
     end)
     |> Enum.map_join(", ", fn {field, errors} ->

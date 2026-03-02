@@ -10,6 +10,7 @@ defmodule Decidulixir.CLI.Commands.Add do
   alias Decidulixir.Graph.Metadata
 
   @valid_types ~w(goal decision option action outcome observation revisit)a
+  @valid_type_strings Map.new(@valid_types, fn t -> {Atom.to_string(t), t} end)
 
   @impl true
   def name, do: "add"
@@ -134,9 +135,9 @@ defmodule Decidulixir.CLI.Commands.Add do
   end
 
   defp parse_type(str) when is_binary(str) do
-    atom = String.to_existing_atom(str)
-    if atom in @valid_types, do: {:ok, atom}, else: :error
-  rescue
-    ArgumentError -> :error
+    case Map.fetch(@valid_type_strings, str) do
+      {:ok, type} -> {:ok, type}
+      :error -> :error
+    end
   end
 end

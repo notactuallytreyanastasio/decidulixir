@@ -46,7 +46,9 @@ defmodule Decidulixir.Repo.Migrations.CreateDecisionGraphTables do
 
     # Join table: nodes <-> conversation node sets
     create table(:conversation_node_set_nodes, primary_key: false) do
-      add :conversation_node_set_id, references(:conversation_node_sets, on_delete: :delete_all), null: false
+      add :conversation_node_set_id, references(:conversation_node_sets, on_delete: :delete_all),
+        null: false
+
       add :node_id, references(:graph_nodes, on_delete: :delete_all), null: false
       add :added_at, :utc_datetime, null: false
     end

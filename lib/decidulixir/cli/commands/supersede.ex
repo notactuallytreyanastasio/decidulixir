@@ -21,7 +21,7 @@ defmodule Decidulixir.CLI.Commands.Supersede do
         aliases: [r: :rationale]
       )
 
-    rationale = opts[:rationale] || (args |> Enum.drop(2) |> Enum.join(" "))
+    rationale = opts[:rationale] || args |> Enum.drop(2) |> Enum.join(" ")
 
     %{
       old_id: parse_int(Enum.at(args, 0)),
@@ -64,6 +64,7 @@ defmodule Decidulixir.CLI.Commands.Supersede do
   end
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n
