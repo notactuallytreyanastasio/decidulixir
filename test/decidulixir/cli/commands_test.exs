@@ -8,7 +8,7 @@ defmodule Decidulixir.CLI.CommandsTest do
   alias Decidulixir.CLI.Server
   alias Decidulixir.Graph
 
-  defp create_node!(attrs) do
+  defp create_node!(attrs \\ %{}) do
     {:ok, node} = Graph.create_node(Map.merge(%{node_type: :goal, title: "Test"}, attrs))
     node
   end
@@ -775,45 +775,451 @@ defmodule Decidulixir.CLI.CommandsTest do
     end
   end
 
-  # ── Stub commands ────────────────────────────────────────
+  # ── Tag ─────────────────────────────────────────────────
 
-  describe "stub commands" do
-    @stub_names ~w(doc serve sync backup pulse writeup themes tag hooks archaeology narratives)
+  describe "tag" do
+    test "adds a tag to a node" do
+      node = create_node!()
 
-    test "all stubs return not implemented" do
-      commands = Server.commands()
+      capture_log(fn ->
+        assert :ok = exec(Commands.Tag, ["add", "#{node.id}", "auth"])
+      end)
 
-      for name <- @stub_names do
-        module = Map.fetch!(commands, name)
+      updated = Graph.get_node(node.id)
+      assert updated.metadata["tags"] == ["auth"]
+    end
 
-        log =
+    test "removes a tag from a node" do
+      node = create_node!(%{metadata: %{"tags" => ["auth", "priority"]}})
+
+      capture_log(fn ->
+        assert :ok = exec(Commands.Tag, ["remove", "#{node.id}", "auth"])
+      end)
+
+      updated = Graph.get_node(node.id)
+      assert updated.metadata["tags"] == ["priority"]
+    end
+
+    test "lists tags for a node" do
+      node = create_node!(%{metadata: %{"tags" => ["auth", "api"]}})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Tag, ["list", "#{node.id}"])
+        end)
+
+      assert output =~ "auth"
+      assert output =~ "api"
+    end
+
+    test "lists all tags across nodes" do
+      create_node!(%{title: "A", metadata: %{"tags" => ["auth"]}})
+      create_node!(%{title: "B", metadata: %{"tags" => ["auth", "api"]}})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Tag, ["list"])
+        end)
+
+      assert output =~ "auth"
+      assert output =~ "api"
+    end
+
+    test "returns error for missing subcommand" do
+      capture_log(fn ->
+        assert {:error, "missing arguments"} = exec(Commands.Tag, [])
+      end)
+    end
+
+    test "parse config" do
+      config = Commands.Tag.parse(["add", "42", "my-tag", "--json"])
+      assert config.subcommand == "add"
+      assert config.node_id == 42
+      assert config.tag == "my-tag"
+      assert config.json == true
+    end
+  end
+
+  # ── Pulse ──────────────────────────────────────────────
+
+  describe "pulse" do
+    test "shows health summary for empty graph" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Pulse, [])
+        end)
+
+      assert output =~ "Graph Pulse"
+      assert output =~ "healthy"
+      assert output =~ "Total nodes:"
+    end
+
+    test "shows health summary with nodes" do
+      create_node!(%{title: "Goal", node_type: :goal})
+      create_node!(%{title: "Orphan Action", node_type: :action})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Pulse, [])
+        end)
+
+      assert output =~ "Total nodes:"
+      assert output =~ "Orphan nodes:"
+    end
+
+    test "json output" do
+      create_node!()
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Pulse, ["--json"])
+        end)
+
+      data = Jason.decode!(output)
+      assert data["total_nodes"] == 1
+      assert data["health"] == "healthy"
+    end
+
+    test "parse config" do
+      config = Commands.Pulse.parse(["--json"])
+      assert config.json == true
+    end
+  end
+
+  # ── Narratives ─────────────────────────────────────────
+
+  describe "narratives" do
+    test "shows narrative chain from a node" do
+      {:ok, goal} = Graph.create_node(%{node_type: :goal, title: "Auth Goal"})
+      {:ok, action} = Graph.create_node(%{node_type: :action, title: "Write Auth"})
+      {:ok, _} = Graph.create_edge(goal.id, action.id, %{edge_type: :leads_to})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Narratives, ["#{goal.id}"])
+        end)
+
+      assert output =~ "GOAL"
+      assert output =~ "Auth Goal"
+      assert output =~ "ACTION"
+      assert output =~ "Write Auth"
+    end
+
+    test "returns error for missing node" do
+      capture_log(fn ->
+        assert {:error, "not found"} = exec(Commands.Narratives, ["999999"])
+      end)
+    end
+
+    test "returns error for missing arguments" do
+      capture_log(fn ->
+        assert {:error, "missing arguments"} = exec(Commands.Narratives, [])
+      end)
+    end
+
+    test "parse config" do
+      config = Commands.Narratives.parse(["42", "--depth", "5", "--json"])
+      assert config.node_id == 42
+      assert config.depth == 5
+      assert config.json == true
+    end
+  end
+
+  # ── Writeup ────────────────────────────────────────────
+
+  describe "writeup" do
+    test "generates markdown report" do
+      create_node!(%{node_type: :goal, title: "My Goal"})
+      create_node!(%{node_type: :action, title: "My Action"})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Writeup, [])
+        end)
+
+      assert output =~ "Decision Graph Report"
+      assert output =~ "Goals"
+    end
+
+    test "json output" do
+      create_node!(%{node_type: :goal, title: "My Goal"})
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Writeup, ["--json"])
+        end)
+
+      data = Jason.decode!(output)
+      assert is_list(data["goals"])
+      assert data["total_nodes"] == 1
+    end
+
+    test "parse config" do
+      config = Commands.Writeup.parse(["--node", "42", "-o", "report.md"])
+      assert config.node_id == 42
+      assert config.output == "report.md"
+    end
+  end
+
+  # ── Backup ─────────────────────────────────────────────
+
+  describe "backup" do
+    @tag :tmp_dir
+    test "exports graph to JSON file", %{tmp_dir: dir} do
+      create_node!(%{title: "Backup Test"})
+      path = Path.join(dir, "backup.json")
+
+      capture_log(fn ->
+        config = Commands.Backup.parse(["-o", path]) |> Map.merge(base_context())
+        assert :ok = Commands.Backup.execute(config)
+      end)
+
+      assert File.exists?(path)
+      data = path |> File.read!() |> Jason.decode!()
+      assert data["stats"]["nodes"] == 1
+      assert length(data["nodes"]) == 1
+    end
+
+    test "parse config" do
+      config = Commands.Backup.parse(["-o", "/tmp/backup.json"])
+      assert config.output == "/tmp/backup.json"
+    end
+  end
+
+  # ── Sync ───────────────────────────────────────────────
+
+  describe "sync" do
+    @tag :tmp_dir
+    test "exports graph-data.json and git-history.json", %{tmp_dir: dir} do
+      create_node!(%{title: "Sync Test", metadata: %{"commit" => "abc1234"}})
+
+      capture_log(fn ->
+        config = Commands.Sync.parse(["-o", dir]) |> Map.merge(base_context())
+        assert :ok = Commands.Sync.execute(config)
+      end)
+
+      assert File.exists?(Path.join(dir, "graph-data.json"))
+      assert File.exists?(Path.join(dir, "git-history.json"))
+
+      graph_data = Path.join(dir, "graph-data.json") |> File.read!() |> Jason.decode!()
+      assert length(graph_data["nodes"]) == 1
+    end
+
+    test "parse config" do
+      config = Commands.Sync.parse(["-o", "custom_dir"])
+      assert config.output == "custom_dir"
+    end
+  end
+
+  # ── Init ───────────────────────────────────────────────
+
+  describe "init" do
+    @tag :tmp_dir
+    test "creates directory structure", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      capture_log(fn ->
+        assert :ok = exec(Commands.Init, [])
+      end)
+
+      assert File.dir?(Path.join(dir, ".deciduous"))
+      assert File.dir?(Path.join(dir, ".deciduous/documents"))
+      assert File.exists?(Path.join(dir, ".deciduous/config.toml"))
+      assert File.exists?(Path.join(dir, ".deciduous/.version"))
+
+      File.cd!(original_dir)
+    end
+
+    test "parse config" do
+      config = Commands.Init.parse(["--force"])
+      assert config.force == true
+    end
+  end
+
+  # ── Check-Update ───────────────────────────────────────
+
+  describe "check-update" do
+    @tag :tmp_dir
+    test "reports not initialized when no .deciduous", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      output =
+        capture_io(fn ->
           capture_log(fn ->
-            config = module.parse([]) |> Map.merge(base_context())
-            assert {:error, "not implemented"} = module.execute(config)
+            assert :ok = exec(Commands.CheckUpdate, [])
           end)
+        end)
 
-        assert log =~ "not yet implemented"
-      end
+      # Either logs or prints "not initialized"
+      assert output =~ "not initialized" or output == ""
+
+      File.cd!(original_dir)
     end
 
-    test "all stubs have name and description" do
-      commands = Server.commands()
+    test "parse config" do
+      config = Commands.CheckUpdate.parse(["--json"])
+      assert config.json == true
+    end
+  end
 
-      for name <- @stub_names do
-        module = Map.fetch!(commands, name)
-        assert module.name() == name
-        assert is_binary(module.description())
-        assert String.length(module.description()) > 0
-      end
+  # ── Update ─────────────────────────────────────────────
+
+  describe "update" do
+    @tag :tmp_dir
+    test "writes version when initialized", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+      File.mkdir_p!(".deciduous")
+
+      capture_log(fn ->
+        assert :ok = exec(Commands.Update, [])
+      end)
+
+      assert File.exists?(".deciduous/.version")
+
+      File.cd!(original_dir)
     end
 
-    test "all stubs parse returns a map" do
-      commands = Server.commands()
+    @tag :tmp_dir
+    test "errors when not initialized", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
 
-      for name <- @stub_names do
-        module = Map.fetch!(commands, name)
-        assert is_map(module.parse([]))
-      end
+      capture_log(fn ->
+        assert {:error, "not initialized"} = exec(Commands.Update, [])
+      end)
+
+      File.cd!(original_dir)
+    end
+  end
+
+  # ── Hooks ──────────────────────────────────────────────
+
+  describe "hooks" do
+    test "lists hooks" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Hooks, ["list"])
+        end)
+
+      # Output depends on whether .claude/hooks/ exists
+      assert is_binary(output)
+    end
+
+    test "parse config" do
+      config = Commands.Hooks.parse(["status", "--json"])
+      assert config.subcommand == "status"
+      assert config.json == true
+    end
+  end
+
+  # ── Serve ──────────────────────────────────────────────
+
+  describe "serve" do
+    test "reports endpoint status" do
+      capture_log(fn ->
+        assert :ok = exec(Commands.Serve, [])
+      end)
+    end
+
+    test "parse config" do
+      config = Commands.Serve.parse(["--port", "8080"])
+      assert config.port == 8080
+    end
+  end
+
+  # ── Themes ─────────────────────────────────────────────
+
+  describe "themes" do
+    test "lists available themes" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Themes, ["list"])
+        end)
+
+      assert output =~ "default"
+      assert output =~ "dark"
+    end
+
+    @tag :tmp_dir
+    test "sets and reads theme", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      capture_log(fn ->
+        assert :ok = exec(Commands.Themes, ["set", "dark"])
+      end)
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Themes, ["current"])
+        end)
+
+      assert output =~ "dark"
+
+      File.cd!(original_dir)
+    end
+
+    test "parse config" do
+      config = Commands.Themes.parse(["set", "dark", "--json"])
+      assert config.subcommand == "set"
+      assert config.theme == "dark"
+      assert config.json == true
+    end
+  end
+
+  # ── Doc ────────────────────────────────────────────────
+
+  describe "doc" do
+    test "lists documents for empty graph" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Doc, ["list"])
+        end)
+
+      assert output =~ "No documents found"
+    end
+
+    test "returns error for missing subcommand" do
+      capture_log(fn ->
+        assert {:error, "missing arguments"} = exec(Commands.Doc, [])
+      end)
+    end
+
+    test "parse config" do
+      config = Commands.Doc.parse(["attach", "42", "file.pdf", "-d", "Architecture diagram"])
+      assert config.subcommand == "attach"
+      assert config.args == ["42", "file.pdf"]
+      assert config.description == "Architecture diagram"
+    end
+  end
+
+  # ── Archaeology ────────────────────────────────────────
+
+  describe "archaeology" do
+    test "dry run parses commits" do
+      output =
+        capture_io(fn ->
+          capture_log(fn ->
+            config =
+              Commands.Archaeology.parse(["--dry-run", "-n", "3"])
+              |> Map.merge(base_context())
+
+            assert :ok = Commands.Archaeology.execute(config)
+          end)
+        end)
+
+      # Should show "Would create N node(s)" or similar dry run output
+      assert output =~ "Dry Run" or output =~ "Would create"
+    end
+
+    test "parse config" do
+      config = Commands.Archaeology.parse(["--since", "2024-01-01", "--dry-run", "-n", "10"])
+      assert config.since == "2024-01-01"
+      assert config.dry_run == true
+      assert config.limit == 10
     end
   end
 
