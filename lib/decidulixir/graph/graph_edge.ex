@@ -8,7 +8,7 @@ defmodule Decidulixir.Graph.GraphEdge do
 
   alias Decidulixir.Graph.Node
 
-  @edge_types ~w(leads_to requires chosen rejected blocks enables)a
+  @edge_types ~w(leads_to requires chosen rejected blocks enables supersedes supports)a
 
   @type t :: %__MODULE__{
           id: integer() | nil,
