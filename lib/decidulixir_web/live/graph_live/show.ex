@@ -6,30 +6,24 @@ defmodule DecidulixirWeb.GraphLive.Show do
 
   @impl true
   def mount(%{"id" => id_str}, _session, socket) do
-    case Integer.parse(id_str) do
-      {id, ""} ->
-        case Graph.get_node(id) do
-          nil ->
-            {:ok, socket |> put_flash(:error, "Node not found") |> redirect(to: ~p"/graph")}
+    with {id, ""} <- Integer.parse(id_str),
+         %{} = node <- Graph.get_node(id) do
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(Decidulixir.PubSub, "graph:updates")
+      end
 
-          node ->
-            if connected?(socket) do
-              Phoenix.PubSub.subscribe(Decidulixir.PubSub, "graph:updates")
-            end
+      socket =
+        socket
+        |> assign(:page_title, "Node #{node.id}: #{node.title}")
+        |> assign(:node, node)
+        |> assign(:incoming, Graph.edges_to(id))
+        |> assign(:outgoing, Graph.edges_from(id))
+        |> assign(:documents, Graph.list_documents(id))
 
-            socket =
-              socket
-              |> assign(:page_title, "Node #{node.id}: #{node.title}")
-              |> assign(:node, node)
-              |> assign(:incoming, Graph.edges_to(id))
-              |> assign(:outgoing, Graph.edges_from(id))
-              |> assign(:documents, Graph.list_documents(id))
-
-            {:ok, socket}
-        end
-
-      _ ->
-        {:ok, socket |> put_flash(:error, "Invalid node ID") |> redirect(to: ~p"/graph")}
+      {:ok, socket}
+    else
+      nil -> {:ok, socket |> put_flash(:error, "Node not found") |> redirect(to: ~p"/graph")}
+      _ -> {:ok, socket |> put_flash(:error, "Invalid node ID") |> redirect(to: ~p"/graph")}
     end
   end
 
@@ -106,7 +100,10 @@ defmodule DecidulixirWeb.GraphLive.Show do
           <div class="card-body p-4">
             <h2 class="card-title text-sm">Incoming Edges ({length(@incoming)})</h2>
             <div :for={edge <- @incoming} class="flex items-center gap-2 text-sm py-1">
-              <.link navigate={~p"/graph/#{edge.from_node_id}"} class="link link-primary font-mono text-xs">
+              <.link
+                navigate={~p"/graph/#{edge.from_node_id}"}
+                class="link link-primary font-mono text-xs"
+              >
                 {edge.from_node_id}
               </.link>
               <span class="opacity-50">&rarr;</span>
@@ -123,7 +120,10 @@ defmodule DecidulixirWeb.GraphLive.Show do
             <div :for={edge <- @outgoing} class="flex items-center gap-2 text-sm py-1">
               <span class="font-mono text-xs">{@node.id}</span>
               <span class="opacity-50">&rarr;</span>
-              <.link navigate={~p"/graph/#{edge.to_node_id}"} class="link link-primary font-mono text-xs">
+              <.link
+                navigate={~p"/graph/#{edge.to_node_id}"}
+                class="link link-primary font-mono text-xs"
+              >
                 {edge.to_node_id}
               </.link>
               <span class="badge badge-xs badge-ghost">{edge.edge_type}</span>

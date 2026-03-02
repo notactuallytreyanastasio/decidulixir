@@ -104,14 +104,22 @@ defmodule DecidulixirWeb.GraphLive.Index do
         <form phx-change="filter" class="flex flex-wrap gap-2">
           <select name="filter[type]" class="select select-bordered select-sm">
             <option value="">All types</option>
-            <option :for={t <- ~w(goal decision option action outcome observation revisit)} value={t} selected={@filters["type"] == t}>
+            <option
+              :for={t <- ~w(goal decision option action outcome observation revisit)}
+              value={t}
+              selected={@filters["type"] == t}
+            >
               {t}
             </option>
           </select>
 
           <select name="filter[status]" class="select select-bordered select-sm">
             <option value="">All statuses</option>
-            <option :for={s <- ~w(active superseded abandoned pending completed rejected)} value={s} selected={@filters["status"] == s}>
+            <option
+              :for={s <- ~w(active superseded abandoned pending completed rejected)}
+              value={s}
+              selected={@filters["status"] == s}
+            >
               {s}
             </option>
           </select>

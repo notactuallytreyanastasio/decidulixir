@@ -103,7 +103,9 @@ defmodule DecidulixirWeb.GraphLiveTest do
     end
 
     test "shows metadata", %{conn: conn} do
-      node = create_node!(%{title: "With Meta", metadata: %{"confidence" => 85, "branch" => "main"}})
+      node =
+        create_node!(%{title: "With Meta", metadata: %{"confidence" => 85, "branch" => "main"}})
+
       {:ok, _view, html} = live(conn, ~p"/graph/#{node.id}")
       assert html =~ "Metadata"
       assert html =~ "confidence"
