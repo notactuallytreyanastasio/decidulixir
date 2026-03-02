@@ -822,6 +822,8 @@ defmodule Decidulixir.CLI.CommandsTest do
   describe "behaviour compliance" do
     test "all command modules implement the Command behaviour" do
       for {_name, module} <- Server.commands() do
+        Code.ensure_loaded!(module)
+
         assert function_exported?(module, :name, 0),
                "#{inspect(module)} missing name/0"
 
