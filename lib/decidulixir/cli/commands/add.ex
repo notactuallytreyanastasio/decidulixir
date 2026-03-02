@@ -110,7 +110,6 @@ defmodule Decidulixir.CLI.Commands.Add do
     config
     |> Map.take([:confidence, :prompt, :files])
     |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-    |> Map.new()
   end
 
   defp maybe_set_branch(meta, nil), do: meta

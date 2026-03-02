@@ -205,6 +205,8 @@ defmodule Decidulixir.Graph do
   """
   @spec supersede(integer(), integer(), String.t()) ::
           {:ok, %{status: Node.t(), edge: GraphEdge.t()}} | {:error, atom(), term(), map()}
+  # Ecto.Multi uses opaque MapSet internally; dialyzer flags the pipe chain
+  @dialyzer {:nowarn_function, supersede: 3}
   def supersede(old_id, new_id, rationale) do
     Ecto.Multi.new()
     |> Ecto.Multi.run(:old_node, fn _repo, _changes ->

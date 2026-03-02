@@ -14,7 +14,7 @@ defmodule Decidulixir.Graph.ConversationNodeSet do
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
-          started_at: DateTime.t(),
+          started_at: DateTime.t() | nil,
           ended_at: DateTime.t() | nil,
           root_node_id: integer() | nil,
           summary: String.t() | nil

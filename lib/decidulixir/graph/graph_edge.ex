@@ -12,8 +12,8 @@ defmodule Decidulixir.Graph.GraphEdge do
 
   @type t :: %__MODULE__{
           id: integer() | nil,
-          from_node_id: integer(),
-          to_node_id: integer(),
+          from_node_id: integer() | nil,
+          to_node_id: integer() | nil,
           from_change_id: Ecto.UUID.t() | nil,
           to_change_id: Ecto.UUID.t() | nil,
           edge_type: atom(),

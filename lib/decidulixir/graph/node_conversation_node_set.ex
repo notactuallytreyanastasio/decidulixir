@@ -12,9 +12,9 @@ defmodule Decidulixir.Graph.NodeConversationNodeSet do
   alias Decidulixir.Graph.Node
 
   @type t :: %__MODULE__{
-          conversation_node_set_id: integer(),
-          node_id: integer(),
-          added_at: DateTime.t()
+          conversation_node_set_id: integer() | nil,
+          node_id: integer() | nil,
+          added_at: DateTime.t() | nil
         }
 
   @primary_key false
