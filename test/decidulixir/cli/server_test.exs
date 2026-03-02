@@ -4,6 +4,7 @@ defmodule Decidulixir.CLI.ServerTest do
   import ExUnit.CaptureLog
 
   alias Decidulixir.CLI.Server
+  alias Decidulixir.CLI.Session
   alias Decidulixir.Graph
 
   describe "execute/2 dispatches commands" do
@@ -142,14 +143,17 @@ defmodule Decidulixir.CLI.ServerTest do
       end)
 
       [node] = Graph.list_nodes(node_type: :goal)
-      # Server enriches from GitPort — in test env we're in a real git repo
+      # Server enriches from Git — in test env we're in a real git repo
       assert is_binary(node.metadata["branch"])
     end
 
-    test "tracks active_goal across commands" do
+    test "tracks active_goal across commands via Session agent" do
       capture_log(fn ->
         assert :ok = Server.execute("add", ["goal", "First Goal"])
       end)
+
+      # After creating a goal, Session.active_goal should be set
+      assert is_integer(Session.active_goal())
 
       capture_log(fn ->
         assert :ok = Server.execute("add", ["goal", "Second Goal"])

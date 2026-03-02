@@ -1,6 +1,6 @@
 defmodule Decidulixir.CLI do
   @moduledoc """
-  CLI public API. Delegates to the supervised Server.
+  CLI public API. Delegates to the Server dispatcher.
   """
 
   alias Decidulixir.CLI.Server

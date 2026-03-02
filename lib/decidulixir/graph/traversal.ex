@@ -128,18 +128,13 @@ defmodule Decidulixir.Graph.Traversal do
   end
 
   defp fetch_neighbors(node_ids, :both) do
-    outgoing =
-      GraphEdge
-      |> where([e], e.from_node_id in ^node_ids)
-      |> select([e], e.to_node_id)
-      |> Repo.all()
-
-    incoming =
-      GraphEdge
-      |> where([e], e.to_node_id in ^node_ids)
-      |> select([e], e.from_node_id)
-      |> Repo.all()
-
-    Enum.uniq(outgoing ++ incoming)
+    # Single query instead of two separate queries for outgoing/incoming.
+    # Returns both endpoints; do_bfs filters via visited set.
+    GraphEdge
+    |> where([e], e.from_node_id in ^node_ids or e.to_node_id in ^node_ids)
+    |> select([e], {e.from_node_id, e.to_node_id})
+    |> Repo.all()
+    |> Enum.flat_map(fn {from, to} -> [from, to] end)
+    |> Enum.uniq()
   end
 end

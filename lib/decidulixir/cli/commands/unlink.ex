@@ -5,6 +5,8 @@ defmodule Decidulixir.CLI.Commands.Unlink do
 
   require Logger
 
+  import Decidulixir.CLI.Parsers, only: [parse_int: 1]
+
   alias Decidulixir.Graph
 
   @impl true
@@ -42,13 +44,4 @@ defmodule Decidulixir.CLI.Commands.Unlink do
 
   defp log_result(from, to, 0), do: Logger.warning("No edges found between #{from} and #{to}")
   defp log_result(from, to, n), do: Logger.info("Removed #{n} edge(s) between #{from} and #{to}")
-
-  defp parse_int(nil), do: nil
-
-  defp parse_int(str) do
-    case Integer.parse(str) do
-      {n, ""} -> n
-      _ -> {:error, str}
-    end
-  end
 end

@@ -83,21 +83,39 @@ defmodule Decidulixir.Graph do
         {:error, :not_found}
 
       node ->
-        edge_count =
-          GraphEdge
-          |> Queries.edges_involving(id)
-          |> Repo.aggregate(:count, :id)
-
         if Keyword.get(opts, :dry_run, false) do
+          edge_count =
+            GraphEdge
+            |> Queries.edges_involving(id)
+            |> Repo.aggregate(:count, :id)
+
           {:ok, %{node: node, edges_removed: edge_count}}
         else
-          GraphEdge
-          |> Queries.edges_involving(id)
-          |> Repo.delete_all()
-
-          Repo.delete(node)
-          {:ok, %{node: node, edges_removed: edge_count}}
+          do_delete_node(id, node)
         end
+    end
+  end
+
+  # Ecto.Multi uses opaque MapSet internally; dialyzer flags the pipe chain
+  @dialyzer {:nowarn_function, do_delete_node: 2}
+  defp do_delete_node(id, node) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:edges, fn _repo, _changes ->
+      {count, _} =
+        GraphEdge
+        |> Queries.edges_involving(id)
+        |> Repo.delete_all()
+
+      {:ok, count}
+    end)
+    |> Ecto.Multi.delete(:node, node)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{node: deleted, edges: count}} ->
+        {:ok, %{node: deleted, edges_removed: count}}
+
+      {:error, _step, reason, _changes} ->
+        {:error, reason}
     end
   end
 
