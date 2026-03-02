@@ -23,6 +23,19 @@ defmodule Decidulixir.Graph.Node do
           updated_at: DateTime.t() | nil
         }
 
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :change_id,
+             :node_type,
+             :title,
+             :description,
+             :status,
+             :metadata,
+             :inserted_at,
+             :updated_at
+           ]}
+
   schema "graph_nodes" do
     field :change_id, Ecto.UUID
     field :node_type, Ecto.Enum, values: @node_types
