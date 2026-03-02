@@ -16,7 +16,9 @@ defmodule Decidulixir.Graph.GraphEdgeTest do
       node1 = create_node!(%{title: "From"})
       node2 = create_node!(%{title: "To"})
 
-      changeset = GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+      changeset =
+        GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+
       assert changeset.valid?
     end
 
@@ -24,7 +26,9 @@ defmodule Decidulixir.Graph.GraphEdgeTest do
       node1 = create_node!()
       node2 = create_node!(%{title: "Other"})
 
-      changeset = GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+      changeset =
+        GraphEdge.changeset(%GraphEdge{}, %{from_node_id: node1.id, to_node_id: node2.id})
+
       assert Ecto.Changeset.get_field(changeset, :edge_type) == :leads_to
     end
 
@@ -90,7 +94,11 @@ defmodule Decidulixir.Graph.GraphEdgeTest do
 
         {:ok, edge} =
           %GraphEdge{}
-          |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: edge_type})
+          |> GraphEdge.changeset(%{
+            from_node_id: node1.id,
+            to_node_id: node2.id,
+            edge_type: edge_type
+          })
           |> Repo.insert()
 
         assert edge.edge_type == edge_type
@@ -116,12 +124,20 @@ defmodule Decidulixir.Graph.GraphEdgeTest do
 
       {:ok, _} =
         %GraphEdge{}
-        |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
+        |> GraphEdge.changeset(%{
+          from_node_id: node1.id,
+          to_node_id: node2.id,
+          edge_type: :leads_to
+        })
         |> Repo.insert()
 
       {:error, changeset} =
         %GraphEdge{}
-        |> GraphEdge.changeset(%{from_node_id: node1.id, to_node_id: node2.id, edge_type: :leads_to})
+        |> GraphEdge.changeset(%{
+          from_node_id: node1.id,
+          to_node_id: node2.id,
+          edge_type: :leads_to
+        })
         |> Repo.insert()
 
       assert errors_on(changeset)[:from_node_id] || errors_on(changeset)[:to_node_id]

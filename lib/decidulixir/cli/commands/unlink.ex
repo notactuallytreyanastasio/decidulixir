@@ -44,6 +44,7 @@ defmodule Decidulixir.CLI.Commands.Unlink do
   defp log_result(from, to, n), do: Logger.info("Removed #{n} edge(s) between #{from} and #{to}")
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n

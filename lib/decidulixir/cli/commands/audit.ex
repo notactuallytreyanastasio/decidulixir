@@ -68,7 +68,9 @@ defmodule Decidulixir.CLI.Commands.Audit do
   defp find_dangling_outcomes(nodes, to_ids) do
     nodes
     |> Enum.filter(fn n -> n.node_type == :outcome and not MapSet.member?(to_ids, n.id) end)
-    |> Enum.map(fn n -> "Dangling outcome: node #{n.id} (\"#{n.title}\") has no incoming edge" end)
+    |> Enum.map(fn n ->
+      "Dangling outcome: node #{n.id} (\"#{n.title}\") has no incoming edge"
+    end)
   end
 
   defp find_missing_refs(edges, node_ids) do

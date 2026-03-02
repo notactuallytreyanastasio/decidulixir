@@ -7,6 +7,10 @@ defmodule Decidulixir.CLI.Commands.Nodes do
 
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
+  alias Decidulixir.Graph.Node
+
+  @status_strings Map.new(Node.node_statuses(), fn s -> {Atom.to_string(s), s} end)
+  @type_strings Map.new(Node.node_types(), fn t -> {Atom.to_string(t), t} end)
 
   @impl true
   def name, do: "nodes"
@@ -65,8 +69,8 @@ defmodule Decidulixir.CLI.Commands.Nodes do
 
   defp to_filters(config) do
     []
-    |> maybe_filter(:status, config.status, &String.to_existing_atom/1)
-    |> maybe_filter(:node_type, config.type, &String.to_existing_atom/1)
+    |> maybe_filter(:status, config.status, &Map.get(@status_strings, &1))
+    |> maybe_filter(:node_type, config.type, &Map.get(@type_strings, &1))
     |> maybe_filter(:branch, config.branch, & &1)
     |> maybe_filter(:search, config.search, & &1)
     |> maybe_filter(:limit, config.limit, & &1)

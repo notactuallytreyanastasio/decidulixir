@@ -9,6 +9,8 @@ defmodule Decidulixir.CLI.Commands.Status do
   alias Decidulixir.Graph
   alias Decidulixir.Graph.Node
 
+  @status_strings Map.new(Node.node_statuses(), fn s -> {Atom.to_string(s), s} end)
+
   @impl true
   def name, do: "status"
 
@@ -63,13 +65,14 @@ defmodule Decidulixir.CLI.Commands.Status do
   defp parse_status(nil), do: nil
 
   defp parse_status(str) do
-    atom = String.to_existing_atom(str)
-    if atom in Node.node_statuses(), do: atom, else: {:error, str}
-  rescue
-    ArgumentError -> {:error, str}
+    case Map.fetch(@status_strings, str) do
+      {:ok, status} -> status
+      :error -> {:error, str}
+    end
   end
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n

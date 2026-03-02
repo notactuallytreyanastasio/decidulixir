@@ -104,6 +104,7 @@ defmodule Decidulixir.CLI.Commands.Show do
   end
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n

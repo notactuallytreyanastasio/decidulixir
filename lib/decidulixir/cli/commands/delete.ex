@@ -38,7 +38,10 @@ defmodule Decidulixir.CLI.Commands.Delete do
   def execute(%{id: id, dry_run: true}) when is_integer(id) do
     case Graph.delete_node(id, dry_run: true) do
       {:ok, result} ->
-        Logger.info("Would delete node #{id} (\"#{result.node.title}\") and #{result.edges_removed} edge(s)")
+        Logger.info(
+          "Would delete node #{id} (\"#{result.node.title}\") and #{result.edges_removed} edge(s)"
+        )
+
         :ok
 
       {:error, :not_found} ->
@@ -50,7 +53,10 @@ defmodule Decidulixir.CLI.Commands.Delete do
   def execute(%{id: id, dry_run: false}) when is_integer(id) do
     case Graph.delete_node(id) do
       {:ok, result} ->
-        Logger.info("Deleted node #{id} (\"#{result.node.title}\") and #{result.edges_removed} edge(s)")
+        Logger.info(
+          "Deleted node #{id} (\"#{result.node.title}\") and #{result.edges_removed} edge(s)"
+        )
+
         :ok
 
       {:error, :not_found} ->
@@ -60,6 +66,7 @@ defmodule Decidulixir.CLI.Commands.Delete do
   end
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n

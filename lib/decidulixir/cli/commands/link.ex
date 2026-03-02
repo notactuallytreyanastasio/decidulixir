@@ -7,6 +7,9 @@ defmodule Decidulixir.CLI.Commands.Link do
 
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
+  alias Decidulixir.Graph.GraphEdge
+
+  @edge_type_strings Map.new(GraphEdge.edge_types(), fn t -> {Atom.to_string(t), t} end)
 
   @impl true
   def name, do: "link"
@@ -51,7 +54,8 @@ defmodule Decidulixir.CLI.Commands.Link do
     {:error, "invalid ID"}
   end
 
-  def execute(%{from: from_id, to: to_id} = config) when is_integer(from_id) and is_integer(to_id) do
+  def execute(%{from: from_id, to: to_id} = config)
+      when is_integer(from_id) and is_integer(to_id) do
     attrs = edge_attrs(config)
 
     case Graph.create_edge(from_id, to_id, attrs) do
@@ -67,10 +71,15 @@ defmodule Decidulixir.CLI.Commands.Link do
 
   defp edge_attrs(%{rationale: nil, edge_type: nil}), do: %{}
   defp edge_attrs(%{rationale: r, edge_type: nil}), do: %{rationale: r}
-  defp edge_attrs(%{rationale: nil, edge_type: t}), do: %{edge_type: String.to_existing_atom(t)}
-  defp edge_attrs(%{rationale: r, edge_type: t}), do: %{rationale: r, edge_type: String.to_existing_atom(t)}
+
+  defp edge_attrs(%{rationale: nil, edge_type: t}),
+    do: %{edge_type: Map.get(@edge_type_strings, t, :leads_to)}
+
+  defp edge_attrs(%{rationale: r, edge_type: t}),
+    do: %{rationale: r, edge_type: Map.get(@edge_type_strings, t, :leads_to)}
 
   defp parse_int(nil), do: nil
+
   defp parse_int(str) do
     case Integer.parse(str) do
       {n, ""} -> n

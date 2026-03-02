@@ -61,7 +61,8 @@ defmodule Decidulixir.Graph do
   end
 
   @doc "Updates a node's prompt in metadata."
-  @spec update_node_prompt(integer(), String.t()) :: {:ok, Node.t()} | {:error, Ecto.Changeset.t()}
+  @spec update_node_prompt(integer(), String.t()) ::
+          {:ok, Node.t()} | {:error, Ecto.Changeset.t()}
   def update_node_prompt(id, prompt) do
     node = get_node!(id)
     new_metadata = Metadata.set_prompt(node.metadata, prompt)
