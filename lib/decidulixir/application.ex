@@ -12,9 +12,7 @@ defmodule Decidulixir.Application do
       Decidulixir.Repo,
       {DNSCluster, query: Application.get_env(:decidulixir, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Decidulixir.PubSub},
-      # Start a worker by calling: Decidulixir.Worker.start_link(arg)
-      # {Decidulixir.Worker, arg},
-      # Start to serve requests, typically the last entry
+      Decidulixir.CLI.Supervisor,
       DecidulixirWeb.Endpoint
     ]
 

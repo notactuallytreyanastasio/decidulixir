@@ -22,6 +22,17 @@ defmodule Decidulixir.Graph.GraphEdge do
           inserted_at: DateTime.t() | nil
         }
 
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :from_node_id,
+             :to_node_id,
+             :edge_type,
+             :weight,
+             :rationale,
+             :inserted_at
+           ]}
+
   schema "graph_edges" do
     belongs_to :from_node, Node, foreign_key: :from_node_id
     belongs_to :to_node, Node, foreign_key: :to_node_id
