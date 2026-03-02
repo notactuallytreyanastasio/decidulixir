@@ -5,6 +5,8 @@ defmodule Decidulixir.CLI.Commands.Link do
 
   require Logger
 
+  import Decidulixir.CLI.Parsers, only: [parse_int: 1]
+
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
   alias Decidulixir.Graph.GraphEdge
@@ -77,13 +79,4 @@ defmodule Decidulixir.CLI.Commands.Link do
 
   defp edge_attrs(%{rationale: r, edge_type: t}),
     do: %{rationale: r, edge_type: Map.get(@edge_type_strings, t, :leads_to)}
-
-  defp parse_int(nil), do: nil
-
-  defp parse_int(str) do
-    case Integer.parse(str) do
-      {n, ""} -> n
-      _ -> {:error, str}
-    end
-  end
 end

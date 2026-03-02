@@ -29,9 +29,9 @@ defmodule Decidulixir.CLI.Formatter do
     "#{id}   #{from} -> #{to}    #{type}#{rationale}"
   end
 
-  @doc "Outputs pretty-printed JSON to stdout."
-  @spec json(term()) :: :ok
-  def json(data), do: data |> Jason.encode!(pretty: true) |> IO.puts()
+  @doc "Returns pretty-printed JSON string."
+  @spec json(term()) :: String.t()
+  def json(data), do: Jason.encode!(data, pretty: true)
 
   @doc "Formats changeset errors as a human-readable string."
   @spec format_changeset_errors(Ecto.Changeset.t()) :: String.t()

@@ -1,24 +1,20 @@
 defmodule Decidulixir.CLI.Server do
   @moduledoc """
-  GenServer controlling all CLI interactions.
+  CLI command dispatcher.
 
-  Holds two contexts:
-  - **git** — current branch, commit, repo state (refreshed per command)
-  - **graph** — active goal, session state (persisted across commands)
+  Plain module — no GenServer. Git context is fetched per call
+  (it was refreshed every call anyway), and session state (active goal)
+  lives in the `CLI.Session` Agent.
 
-  Commands receive an enriched config hash (their parsed opts + both contexts)
-  and pattern match on it in function heads.
+  Commands receive an enriched config map (their parsed opts + git context
+  + active goal) and pattern match on it in function heads.
   """
-
-  use GenServer
 
   require Logger
 
   alias Decidulixir.CLI.Commands
-  alias Decidulixir.CLI.GitPort
-
-  @type git_context :: %{branch: String.t() | nil, commit: String.t() | nil}
-  @type graph_context :: %{active_goal: integer() | nil}
+  alias Decidulixir.CLI.Git
+  alias Decidulixir.CLI.Session
 
   @commands %{
     "add" => Commands.Add,
@@ -51,81 +47,44 @@ defmodule Decidulixir.CLI.Server do
     "commands" => Commands.CommandsList
   }
 
-  # ── Public API ──────────────────────────────────────────
-
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @spec execute(String.t(), [String.t()]) :: :ok | {:error, String.t()}
   def execute(command, argv) do
-    GenServer.call(__MODULE__, {:execute, command, argv}, :infinity)
-  end
-
-  @spec commands() :: %{String.t() => module()}
-  def commands, do: @commands
-
-  # ── GenServer callbacks ─────────────────────────────────
-
-  @impl true
-  def init(_opts) do
-    {:ok, %{git: refresh_git(), graph: %{active_goal: nil}}}
-  end
-
-  @impl true
-  def handle_call({:execute, command, argv}, _from, state) do
-    state = %{state | git: refresh_git()}
-
-    case dispatch(command, argv, state) do
-      {:ok, updates} ->
-        {:reply, :ok, apply_updates(state, updates)}
-
-      :ok ->
-        {:reply, :ok, state}
-
-      {:error, _} = err ->
-        {:reply, err, state}
-    end
-  end
-
-  # ── Private ─────────────────────────────────────────────
-
-  defp dispatch(command, argv, state) do
     case Map.get(@commands, command) do
       nil ->
         Logger.error("Unknown command: #{command}. Run 'mix decidulixir help'.")
         {:error, "unknown command"}
 
       module ->
-        argv |> module.parse() |> enrich(state) |> module.execute()
+        config = argv |> module.parse() |> enrich()
+
+        case module.execute(config) do
+          {:ok, updates} ->
+            apply_updates(updates)
+            :ok
+
+          :ok ->
+            :ok
+
+          {:error, _} = err ->
+            err
+        end
     end
   end
 
-  defp enrich(config, state) do
+  @spec commands() :: %{String.t() => module()}
+  def commands, do: @commands
+
+  defp enrich(config) do
     config
-    |> Map.put_new(:git_branch, state.git.branch)
-    |> Map.put_new(:git_commit, state.git.commit)
-    |> Map.put_new(:active_goal, state.graph.active_goal)
+    |> Map.put_new(:git_branch, Git.branch())
+    |> Map.put_new(:git_commit, Git.commit())
+    |> Map.put_new(:active_goal, Session.active_goal())
   end
 
-  defp refresh_git do
-    %{
-      branch: git_value(["rev-parse", "--abbrev-ref", "HEAD"]),
-      commit: git_value(["rev-parse", "--short", "HEAD"])
-    }
-  end
-
-  defp git_value(args) do
-    case GitPort.cmd(args) do
-      {:ok, val} -> val
-      {:error, _} -> nil
+  defp apply_updates(updates) do
+    case Map.get(updates, :active_goal) do
+      nil -> :ok
+      goal_id -> Session.set_active_goal(goal_id)
     end
-  end
-
-  defp apply_updates(state, updates) do
-    Enum.reduce(updates, state, fn
-      {:active_goal, id}, acc -> put_in(acc, [:graph, :active_goal], id)
-      _, acc -> acc
-    end)
   end
 end

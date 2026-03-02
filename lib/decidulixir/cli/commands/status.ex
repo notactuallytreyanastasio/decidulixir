@@ -5,6 +5,8 @@ defmodule Decidulixir.CLI.Commands.Status do
 
   require Logger
 
+  import Decidulixir.CLI.Parsers, only: [parse_int: 1]
+
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
   alias Decidulixir.Graph.Node
@@ -68,15 +70,6 @@ defmodule Decidulixir.CLI.Commands.Status do
     case Map.fetch(@status_strings, str) do
       {:ok, status} -> status
       :error -> {:error, str}
-    end
-  end
-
-  defp parse_int(nil), do: nil
-
-  defp parse_int(str) do
-    case Integer.parse(str) do
-      {n, ""} -> n
-      _ -> {:error, str}
     end
   end
 end

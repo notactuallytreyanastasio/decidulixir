@@ -60,9 +60,10 @@ defmodule Decidulixir.CLI.FormatterTest do
   end
 
   describe "json/1" do
-    test "outputs JSON to stdout" do
-      output = ExUnit.CaptureIO.capture_io(fn -> Formatter.json(%{a: 1}) end)
-      assert Jason.decode!(output) == %{"a" => 1}
+    test "returns pretty-printed JSON string" do
+      result = Formatter.json(%{a: 1})
+      assert is_binary(result)
+      assert Jason.decode!(result) == %{"a" => 1}
     end
   end
 end

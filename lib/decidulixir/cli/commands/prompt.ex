@@ -5,6 +5,8 @@ defmodule Decidulixir.CLI.Commands.Prompt do
 
   require Logger
 
+  import Decidulixir.CLI.Parsers, only: [parse_int: 1]
+
   alias Decidulixir.CLI.Formatter
   alias Decidulixir.Graph
 
@@ -49,15 +51,6 @@ defmodule Decidulixir.CLI.Commands.Prompt do
       {:error, changeset} ->
         Logger.error("Failed to update prompt: #{Formatter.format_changeset_errors(changeset)}")
         {:error, "update failed"}
-    end
-  end
-
-  defp parse_int(nil), do: nil
-
-  defp parse_int(str) do
-    case Integer.parse(str) do
-      {n, ""} -> n
-      _ -> {:error, str}
     end
   end
 end

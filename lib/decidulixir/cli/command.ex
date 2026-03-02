@@ -7,7 +7,8 @@ defmodule Decidulixir.CLI.Command do
   """
 
   @type config :: map()
-  @type result :: :ok | {:error, String.t()}
+  @type updates :: %{optional(:active_goal) => integer()}
+  @type result :: :ok | {:ok, updates()} | {:error, String.t()}
 
   @callback name() :: String.t()
   @callback description() :: String.t()

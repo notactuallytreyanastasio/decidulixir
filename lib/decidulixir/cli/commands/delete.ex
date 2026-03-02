@@ -5,6 +5,8 @@ defmodule Decidulixir.CLI.Commands.Delete do
 
   require Logger
 
+  import Decidulixir.CLI.Parsers, only: [parse_int: 1]
+
   alias Decidulixir.Graph
 
   @impl true
@@ -62,15 +64,6 @@ defmodule Decidulixir.CLI.Commands.Delete do
       {:error, :not_found} ->
         Logger.error("Node #{id} not found")
         {:error, "not found"}
-    end
-  end
-
-  defp parse_int(nil), do: nil
-
-  defp parse_int(str) do
-    case Integer.parse(str) do
-      {n, ""} -> n
-      _ -> {:error, str}
     end
   end
 end

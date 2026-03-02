@@ -78,14 +78,4 @@ defmodule Decidulixir.Graph.Queries do
   def edges_involving(query \\ GraphEdge, node_id) do
     where(query, [e], e.from_node_id == ^node_id or e.to_node_id == ^node_id)
   end
-
-  # ── Preloading ────────────────────────────────────────────
-
-  @spec with_edges(Ecto.Queryable.t()) :: Ecto.Query.t()
-  def with_edges(query) do
-    query
-    |> join(:left, [n], e_out in GraphEdge, on: e_out.from_node_id == n.id, as: :outgoing)
-    |> join(:left, [n], e_in in GraphEdge, on: e_in.to_node_id == n.id, as: :incoming)
-    |> preload([outgoing: e_out, incoming: e_in], [])
-  end
 end
