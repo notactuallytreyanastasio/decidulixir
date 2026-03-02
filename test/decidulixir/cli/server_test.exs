@@ -187,6 +187,7 @@ defmodule Decidulixir.CLI.ServerTest do
 
     test "all values are modules implementing the Command behaviour" do
       for {_name, module} <- Server.commands() do
+        Code.ensure_loaded!(module)
         assert function_exported?(module, :name, 0)
         assert function_exported?(module, :description, 0)
         assert function_exported?(module, :parse, 1)
