@@ -294,4 +294,147 @@ defmodule Decidulixir.InitTest do
       assert :update_available = CheckUpdate.check(project_root: tmp)
     end
   end
+
+  describe "Validator edge cases" do
+    test "accepts single backend" do
+      assert :ok = Validator.validate(backends: [:claude])
+    end
+
+    test "rejects empty keyword list" do
+      assert {:error, _} = Validator.validate([])
+    end
+  end
+
+  describe "FileWriter edge cases" do
+    test "write_if_missing creates parent directories", %{tmp_dir: tmp} do
+      path = Path.join([tmp, "deep", "nested", "file.txt"])
+      assert :ok = FileWriter.write_if_missing(path, "deep content")
+      assert File.read!(path) == "deep content"
+    end
+
+    test "write_batch with overwrite replaces existing", %{tmp_dir: tmp} do
+      path = Path.join(tmp, "existing.txt")
+      File.write!(path, "old")
+
+      count = FileWriter.write_batch([{"existing.txt", "new"}], tmp, overwrite: true)
+      assert count == 1
+      assert File.read!(path) == "new"
+    end
+
+    test "write_batch without force skips existing", %{tmp_dir: tmp} do
+      path = Path.join(tmp, "keep.txt")
+      File.write!(path, "original")
+
+      count = FileWriter.write_batch([{"keep.txt", "replacement"}], tmp)
+      assert count == 0
+      assert File.read!(path) == "original"
+    end
+
+    test "add_to_gitignore creates file if missing", %{tmp_dir: tmp} do
+      FileWriter.add_to_gitignore(tmp, ".deciduous/")
+      gitignore = File.read!(Path.join(tmp, ".gitignore"))
+      assert String.contains?(gitignore, ".deciduous/")
+    end
+
+    test "update_markdown_section creates file if missing", %{tmp_dir: tmp} do
+      path = Path.join(tmp, "NEW.md")
+      FileWriter.update_markdown_section(path, "## Section Content")
+      content = File.read!(path)
+      assert String.contains?(content, "deciduous:start")
+      assert String.contains?(content, "## Section Content")
+      assert String.contains?(content, "deciduous:end")
+    end
+
+    test "write_executable_if_missing skips existing", %{tmp_dir: tmp} do
+      path = Path.join(tmp, "existing_hook.sh")
+      File.write!(path, "#!/bin/bash\noriginal")
+      assert :skipped = FileWriter.write_executable_if_missing(path, "#!/bin/bash\nnew")
+      assert File.read!(path) == "#!/bin/bash\noriginal"
+    end
+
+    test "write_overwrite creates parent dirs", %{tmp_dir: tmp} do
+      path = Path.join([tmp, "new_dir", "file.txt"])
+      FileWriter.write_overwrite(path, "overwritten")
+      assert File.read!(path) == "overwritten"
+    end
+  end
+
+  describe "Version edge cases" do
+    test "current returns a version string" do
+      version = Version.current()
+      assert is_binary(version)
+      assert String.match?(version, ~r/\d+\.\d+\.\d+/)
+    end
+
+    test "write creates .deciduous dir if needed", %{tmp_dir: tmp} do
+      Version.write(tmp)
+      assert File.exists?(Path.join([tmp, ".deciduous", ".version"]))
+    end
+
+    test "update_available? returns false when not initialized", %{tmp_dir: tmp} do
+      refute Version.update_available?(tmp)
+    end
+  end
+
+  describe "Init.init_project edge cases" do
+    test "force option overwrites existing files", %{tmp_dir: tmp} do
+      Init.init_project(backends: [:claude], project_root: tmp)
+
+      # Modify a file
+      config_path = Path.join(tmp, ".deciduous/config.toml")
+      File.write!(config_path, "modified")
+
+      # Re-init with force should work
+      assert :ok = Init.init_project(backends: [:claude], project_root: tmp, force: true)
+    end
+
+    test "auto-detects windsurf when .windsurf exists", %{tmp_dir: tmp} do
+      File.mkdir_p!(Path.join(tmp, ".windsurf"))
+      assert :ok = Init.init_project(backends: [:claude], project_root: tmp)
+
+      # Windsurf files should also be created due to auto-detection
+      assert File.exists?(Path.join(tmp, ".windsurf/hooks.json"))
+    end
+
+    test "creates workflows when .git exists", %{tmp_dir: tmp} do
+      File.mkdir_p!(Path.join(tmp, ".git"))
+      assert :ok = Init.init_project(backends: [:claude], project_root: tmp)
+      assert File.exists?(Path.join(tmp, ".github/workflows/deploy-pages.yml"))
+    end
+
+    test "skips workflows when not a git repo", %{tmp_dir: tmp} do
+      assert :ok = Init.init_project(backends: [:claude], project_root: tmp)
+      refute File.exists?(Path.join(tmp, ".github/workflows/deploy-pages.yml"))
+    end
+  end
+
+  describe "Templates content" do
+    test "Shared config.toml has expected structure" do
+      files = Shared.files("/tmp")
+      {_, config_content} = Enum.find(files, fn {path, _} -> path == ".deciduous/config.toml" end)
+      assert String.contains?(config_content, "[branch]")
+    end
+
+    test "Claude settings.json is valid JSON" do
+      files = Claude.files("/tmp")
+      {_, settings} = Enum.find(files, fn {path, _} -> path == ".claude/settings.json" end)
+      assert {:ok, _} = Jason.decode(settings)
+    end
+
+    test "OpenCode detect? checks .opencode dir" do
+      refute OpenCode.detect?("/nonexistent")
+    end
+
+    test "Windsurf detect? checks .windsurf dir" do
+      refute Windsurf.detect?("/nonexistent")
+    end
+
+    test "all backend modules implement Backend behaviour" do
+      for mod <- [Claude, OpenCode, Windsurf] do
+        assert is_binary(mod.name())
+        assert is_list(mod.files("/tmp"))
+        assert is_boolean(mod.detect?("/nonexistent"))
+      end
+    end
+  end
 end
