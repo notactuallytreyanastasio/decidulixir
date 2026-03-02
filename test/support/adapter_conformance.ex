@@ -54,7 +54,7 @@ defmodule Decidulixir.AdapterConformance do
           {:ok, _} = unquote(adapter).create_node(%{node_type: :goal, title: "G1"})
           {:ok, _} = unquote(adapter).create_node(%{node_type: :action, title: "A1"})
           {:ok, nodes} = unquote(adapter).list_nodes([])
-          assert length(nodes) >= 2
+          assert [_, _ | _] = nodes
         end
 
         test "list nodes filtered by type" do
@@ -88,18 +88,28 @@ defmodule Decidulixir.AdapterConformance do
           {:ok, n2} = unquote(adapter).create_node(%{node_type: :option, title: "O"})
           {:ok, _} = unquote(adapter).create_edge(n1.id, n2.id, :leads_to)
           {:ok, edges} = unquote(adapter).list_edges([])
-          assert length(edges) >= 1
+          assert edges != []
         end
 
         # ── Convenience ──────────────────────────────────
 
         test "active_goals returns only active goals" do
-          {:ok, _} = unquote(adapter).create_node(%{node_type: :goal, title: "Active", status: :active})
-          {:ok, _} = unquote(adapter).create_node(%{node_type: :goal, title: "Dead", status: :abandoned})
-          {:ok, _} = unquote(adapter).create_node(%{node_type: :action, title: "Not Goal", status: :active})
+          {:ok, _} =
+            unquote(adapter).create_node(%{node_type: :goal, title: "Active", status: :active})
+
+          {:ok, _} =
+            unquote(adapter).create_node(%{node_type: :goal, title: "Dead", status: :abandoned})
+
+          {:ok, _} =
+            unquote(adapter).create_node(%{
+              node_type: :action,
+              title: "Not Goal",
+              status: :active
+            })
+
           {:ok, goals} = unquote(adapter).active_goals()
           assert Enum.all?(goals, fn g -> g.node_type == :goal and g.status == :active end)
-          assert length(goals) >= 1
+          assert goals != []
         end
 
         test "recent_decisions returns decisions and options" do
@@ -136,7 +146,7 @@ defmodule Decidulixir.AdapterConformance do
           {:ok, n2} = unquote(adapter).create_node(%{node_type: :option, title: "Child"})
           {:ok, _} = unquote(adapter).create_edge(n1.id, n2.id, :leads_to)
           {:ok, narrative} = unquote(adapter).narrative_for_goal(n1.id)
-          assert length(narrative) >= 1
+          assert narrative != []
         end
 
         test "format_timeline returns string" do

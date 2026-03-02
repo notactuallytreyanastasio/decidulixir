@@ -32,7 +32,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.NativeTest do
     test "pulse detects orphans" do
       {:ok, _} = Native.create_node(%{node_type: :action, title: "Orphaned"})
       {:ok, report} = Native.pulse()
-      assert length(report.orphan_nodes) >= 1
+      assert report.orphan_nodes != []
     end
 
     test "pulse detects coverage gaps" do

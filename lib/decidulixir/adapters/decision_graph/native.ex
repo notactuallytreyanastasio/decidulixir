@@ -128,9 +128,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
     sections =
       if goals != [] do
         goal_text =
-          goals
-          |> Enum.map(fn g -> "- #{g.title} (#{g.status})" end)
-          |> Enum.join("\n")
+          Enum.map_join(goals, "\n", fn g -> "- #{g.title} (#{g.status})" end)
 
         ["## Active Goals\n#{goal_text}" | sections]
       else
@@ -143,9 +141,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
     sections =
       if decisions != [] do
         dec_text =
-          decisions
-          |> Enum.map(fn d -> "- #{d.title} (#{d.node_type})" end)
-          |> Enum.join("\n")
+          Enum.map_join(decisions, "\n", fn d -> "- #{d.title} (#{d.node_type})" end)
 
         ["## Recent Decisions\n#{dec_text}" | sections]
       else
@@ -153,23 +149,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
       end
 
     # Session context
-    sections =
-      if session_id do
-        nodes = Graph.nodes_in_conversation_set(session_id)
-
-        if nodes != [] do
-          session_text =
-            nodes
-            |> Enum.map(fn n -> "- [#{n.node_type}] #{n.title}" end)
-            |> Enum.join("\n")
-
-          ["## Session Context\n#{session_text}" | sections]
-        else
-          sections
-        end
-      else
-        sections
-      end
+    sections = append_session_context(sections, session_id)
 
     context = sections |> Enum.reverse() |> Enum.join("\n\n")
     context = String.slice(context, 0, max_tokens)
@@ -185,7 +165,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
     decisions = Graph.recent_decisions(20)
     all_nodes = Graph.list_nodes()
     all_edges = Graph.list_edges()
-    stale_cutoff = DateTime.add(DateTime.utc_now(), -stale_days * 86400, :second)
+    stale_cutoff = DateTime.add(DateTime.utc_now(), -stale_days * 86_400, :second)
 
     connected_ids =
       all_edges
@@ -246,14 +226,12 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
 
   @impl true
   def format_timeline(nodes) do
-    nodes
-    |> Enum.map(fn n ->
+    Enum.map_join(nodes, "\n", fn n ->
       timestamp = n[:inserted_at] || n["inserted_at"] || "?"
       type = n[:node_type] || n["node_type"] || "?"
       title = n[:title] || n["title"] || "?"
       "  #{timestamp}  [#{type}]  #{title}"
     end)
-    |> Enum.join("\n")
   end
 
   # ── Serialization ──────────────────────────────────────
@@ -282,6 +260,19 @@ defmodule Decidulixir.Adapters.DecisionGraph.Native do
       rationale: edge.rationale,
       inserted_at: edge.inserted_at
     }
+  end
+
+  defp append_session_context(sections, nil), do: sections
+
+  defp append_session_context(sections, session_id) do
+    nodes = Graph.nodes_in_conversation_set(session_id)
+
+    if nodes != [] do
+      session_text = Enum.map_join(nodes, "\n", fn n -> "- [#{n.node_type}] #{n.title}" end)
+      ["## Session Context\n#{session_text}" | sections]
+    else
+      sections
+    end
   end
 
   defp find_coverage_gaps(goals, all_edges) do

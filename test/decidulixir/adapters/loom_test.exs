@@ -12,7 +12,10 @@ defmodule Decidulixir.Adapters.DecisionGraph.LoomTest do
       {:ok, node} = LoomAdapter.create_node(%{node_type: :goal, title: "UUID Test"})
       assert is_binary(node.id)
       # UUID format: 8-4-4-4-12
-      assert String.match?(node.id, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      assert String.match?(
+               node.id,
+               ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+             )
     end
 
     test "get_node accepts UUID" do

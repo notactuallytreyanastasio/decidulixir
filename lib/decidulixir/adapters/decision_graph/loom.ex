@@ -14,6 +14,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Loom do
 
   @behaviour Decidulixir.Adapters.DecisionGraph
 
+  alias Decidulixir.Adapters.DecisionGraph.Native
   alias Decidulixir.Graph
   alias Decidulixir.Graph.Metadata
   alias Decidulixir.Graph.Traversal
@@ -149,13 +150,13 @@ defmodule Decidulixir.Adapters.DecisionGraph.Loom do
   @impl true
   def build_context(session_id, opts \\ []) do
     # Delegate to native — analysis doesn't need ID translation
-    Decidulixir.Adapters.DecisionGraph.Native.build_context(session_id, opts)
+    Native.build_context(session_id, opts)
   end
 
   @impl true
   def pulse(opts \\ []) do
     # Get native pulse, then translate node IDs to UUIDs
-    {:ok, report} = Decidulixir.Adapters.DecisionGraph.Native.pulse(opts)
+    {:ok, report} = Native.pulse(opts)
 
     {:ok,
      %{
@@ -189,7 +190,7 @@ defmodule Decidulixir.Adapters.DecisionGraph.Loom do
 
   @impl true
   def format_timeline(nodes) do
-    Decidulixir.Adapters.DecisionGraph.Native.format_timeline(nodes)
+    Native.format_timeline(nodes)
   end
 
   # ── Translation helpers ────────────────────────────────

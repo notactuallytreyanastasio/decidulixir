@@ -21,7 +21,8 @@ defmodule Decidulixir.Adapters.DecisionGraph do
   @callback get_node(id :: node_id()) :: {:ok, node_result()} | {:error, :not_found}
 
   @doc "Updates a node."
-  @callback update_node(id :: node_id(), attrs :: map()) :: {:ok, node_result()} | {:error, term()}
+  @callback update_node(id :: node_id(), attrs :: map()) ::
+              {:ok, node_result()} | {:error, term()}
 
   @doc "Deletes a node."
   @callback delete_node(id :: node_id()) :: {:ok, node_result()} | {:error, :not_found}
@@ -32,7 +33,12 @@ defmodule Decidulixir.Adapters.DecisionGraph do
   # ── Edge CRUD ──────────────────────────────────────────
 
   @doc "Creates an edge between two nodes."
-  @callback create_edge(from_id :: node_id(), to_id :: node_id(), edge_type :: atom(), opts :: keyword()) ::
+  @callback create_edge(
+              from_id :: node_id(),
+              to_id :: node_id(),
+              edge_type :: atom(),
+              opts :: keyword()
+            ) ::
               {:ok, edge_result()} | {:error, term()}
 
   @doc "Lists edges with optional filters."
