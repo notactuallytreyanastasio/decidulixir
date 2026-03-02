@@ -1052,8 +1052,65 @@ defmodule Decidulixir.CLI.CommandsTest do
           end)
         end)
 
-      # Either logs or prints "not initialized"
       assert output =~ "not initialized" or output == ""
+
+      File.cd!(original_dir)
+    end
+
+    @tag :tmp_dir
+    test "reports up to date when versions match", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      version = Mix.Project.config()[:version] || "0.0.0"
+      File.mkdir_p!(".deciduous")
+      File.write!(".deciduous/.version", version)
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.CheckUpdate, [])
+        end)
+
+      assert output =~ "Up to date"
+
+      File.cd!(original_dir)
+    end
+
+    @tag :tmp_dir
+    test "reports update available when versions differ", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      File.mkdir_p!(".deciduous")
+      File.write!(".deciduous/.version", "0.0.1")
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.CheckUpdate, [])
+        end)
+
+      assert output =~ "Update available"
+
+      File.cd!(original_dir)
+    end
+
+    @tag :tmp_dir
+    test "json output includes version info", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+
+      File.mkdir_p!(".deciduous")
+      File.write!(".deciduous/.version", "0.0.1")
+
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.CheckUpdate, ["--json"])
+        end)
+
+      decoded = Jason.decode!(output)
+      assert decoded["installed"] == "0.0.1"
+      assert is_binary(decoded["current"])
+      assert decoded["update_available"] == true
 
       File.cd!(original_dir)
     end
@@ -1078,6 +1135,8 @@ defmodule Decidulixir.CLI.CommandsTest do
       end)
 
       assert File.exists?(".deciduous/.version")
+      version = File.read!(".deciduous/.version")
+      assert version == (Mix.Project.config()[:version] || "0.0.0")
 
       File.cd!(original_dir)
     end
@@ -1093,12 +1152,29 @@ defmodule Decidulixir.CLI.CommandsTest do
 
       File.cd!(original_dir)
     end
+
+    @tag :tmp_dir
+    test "overwrites old version", %{tmp_dir: dir} do
+      original_dir = File.cwd!()
+      File.cd!(dir)
+      File.mkdir_p!(".deciduous")
+      File.write!(".deciduous/.version", "0.0.1")
+
+      capture_log(fn ->
+        assert :ok = exec(Commands.Update, [])
+      end)
+
+      version = File.read!(".deciduous/.version")
+      assert version != "0.0.1"
+
+      File.cd!(original_dir)
+    end
   end
 
   # ── Hooks ──────────────────────────────────────────────
 
   describe "hooks" do
-    test "lists hooks" do
+    test "lists hooks from .claude/hooks/" do
       output =
         capture_io(fn ->
           assert :ok = exec(Commands.Hooks, ["list"])
@@ -1108,25 +1184,82 @@ defmodule Decidulixir.CLI.CommandsTest do
       assert is_binary(output)
     end
 
+    test "status reports hook activity" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Hooks, ["status"])
+        end)
+
+      assert is_binary(output)
+    end
+
+    test "json output for list" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Hooks, ["list", "--json"])
+        end)
+
+      decoded = Jason.decode!(output)
+      assert is_list(decoded)
+    end
+
+    test "json output for status" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Hooks, ["status", "--json"])
+        end)
+
+      decoded = Jason.decode!(output)
+      assert is_list(decoded)
+    end
+
+    test "unknown subcommand returns error" do
+      capture_log(fn ->
+        assert {:error, "unknown subcommand"} = exec(Commands.Hooks, ["install"])
+      end)
+    end
+
     test "parse config" do
       config = Commands.Hooks.parse(["status", "--json"])
       assert config.subcommand == "status"
       assert config.json == true
+    end
+
+    test "parse defaults subcommand to list" do
+      config = Commands.Hooks.parse([])
+      assert config.subcommand == "list"
     end
   end
 
   # ── Serve ──────────────────────────────────────────────
 
   describe "serve" do
-    test "reports endpoint status" do
+    test "reports endpoint status when not running" do
       capture_log(fn ->
         assert :ok = exec(Commands.Serve, [])
+      end)
+    end
+
+    test "accepts custom port" do
+      # Serve always succeeds — just verify it runs without error
+      capture_log(fn ->
+        assert :ok = exec(Commands.Serve, ["--port", "8080"])
       end)
     end
 
     test "parse config" do
       config = Commands.Serve.parse(["--port", "8080"])
       assert config.port == 8080
+    end
+
+    test "parse defaults port to 4000" do
+      config = Commands.Serve.parse([])
+      assert config.port == 4000
+    end
+
+    test "short alias for port" do
+      config = Commands.Serve.parse(["-p", "3000"])
+      assert config.port == 3000
     end
   end
 
@@ -1188,6 +1321,108 @@ defmodule Decidulixir.CLI.CommandsTest do
       end)
     end
 
+    test "returns error for unknown subcommand" do
+      capture_log(fn ->
+        assert {:error, "unknown subcommand"} = exec(Commands.Doc, ["purge"])
+      end)
+    end
+
+    test "attach error for missing args" do
+      capture_log(fn ->
+        assert {:error, "missing arguments"} = exec(Commands.Doc, ["attach"])
+      end)
+    end
+
+    test "attach error for invalid node ID" do
+      capture_log(fn ->
+        assert {:error, "invalid ID"} = exec(Commands.Doc, ["attach", "abc", "/tmp/test.txt"])
+      end)
+    end
+
+    test "attach error for nonexistent node" do
+      capture_log(fn ->
+        assert {:error, "not found"} = exec(Commands.Doc, ["attach", "999999", "/tmp/test.txt"])
+      end)
+    end
+
+    @tag :tmp_dir
+    test "full attach/list/show/detach workflow", %{tmp_dir: dir} do
+      node = create_node!()
+      test_file = Path.join(dir, "test_doc.txt")
+      File.write!(test_file, "test document content")
+
+      # Attach
+      capture_log(fn ->
+        assert :ok =
+                 exec(Commands.Doc, [
+                   "attach",
+                   to_string(node.id),
+                   test_file,
+                   "-d",
+                   "Test doc"
+                 ])
+      end)
+
+      # List for node
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Doc, ["list", to_string(node.id)])
+        end)
+
+      assert output =~ "test_doc.txt"
+
+      # List all
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Doc, ["list"])
+        end)
+
+      assert output =~ "test_doc.txt"
+
+      # Get doc ID from DB
+      [doc] = Graph.list_documents(node.id)
+
+      # Show
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Doc, ["show", to_string(doc.id)])
+        end)
+
+      assert output =~ "test_doc.txt"
+      assert output =~ "Test doc"
+
+      # Detach
+      capture_log(fn ->
+        assert :ok = exec(Commands.Doc, ["detach", to_string(doc.id)])
+      end)
+
+      # List should be empty now
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.Doc, ["list", to_string(node.id)])
+        end)
+
+      assert output =~ "No documents found"
+    end
+
+    test "show error for nonexistent doc" do
+      capture_log(fn ->
+        assert {:error, "not found"} = exec(Commands.Doc, ["show", "999999"])
+      end)
+    end
+
+    test "detach error for nonexistent doc" do
+      capture_log(fn ->
+        assert {:error, "not found"} = exec(Commands.Doc, ["detach", "999999"])
+      end)
+    end
+
+    test "list for specific node with invalid ID" do
+      capture_log(fn ->
+        assert {:error, "invalid ID"} = exec(Commands.Doc, ["list", "abc"])
+      end)
+    end
+
     test "parse config" do
       config = Commands.Doc.parse(["attach", "42", "file.pdf", "-d", "Architecture diagram"])
       assert config.subcommand == "attach"
@@ -1211,8 +1446,39 @@ defmodule Decidulixir.CLI.CommandsTest do
           end)
         end)
 
-      # Should show "Would create N node(s)" or similar dry run output
       assert output =~ "Dry Run" or output =~ "Would create"
+    end
+
+    test "dry run json output" do
+      output =
+        capture_io(fn ->
+          capture_log(fn ->
+            config =
+              Commands.Archaeology.parse(["--dry-run", "-n", "3", "--json"])
+              |> Map.merge(base_context())
+
+            assert :ok = Commands.Archaeology.execute(config)
+          end)
+        end)
+
+      decoded = Jason.decode!(output)
+      assert is_list(decoded)
+    end
+
+    test "creates nodes from git history" do
+      capture_io(fn ->
+        capture_log(fn ->
+          config =
+            Commands.Archaeology.parse(["-n", "2"])
+            |> Map.merge(base_context())
+
+          assert :ok = Commands.Archaeology.execute(config)
+        end)
+      end)
+
+      all = Graph.list_nodes()
+      with_commits = Enum.filter(all, &(&1.metadata["commit"] != nil))
+      assert with_commits != []
     end
 
     test "parse config" do
@@ -1220,6 +1486,30 @@ defmodule Decidulixir.CLI.CommandsTest do
       assert config.since == "2024-01-01"
       assert config.dry_run == true
       assert config.limit == 10
+    end
+
+    test "parse defaults" do
+      config = Commands.Archaeology.parse([])
+      assert config.dry_run == false
+      assert config.json == false
+      assert config.limit == 50
+      assert config.since == nil
+    end
+  end
+
+  # ── CommandsList ────────────────────────────────────────
+
+  describe "commands list" do
+    test "lists all registered commands" do
+      output =
+        capture_io(fn ->
+          assert :ok = exec(Commands.CommandsList, [])
+        end)
+
+      assert output =~ "add"
+      assert output =~ "nodes"
+      assert output =~ "link"
+      assert output =~ "audit"
     end
   end
 
