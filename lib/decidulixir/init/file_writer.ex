@@ -6,18 +6,18 @@ defmodule Decidulixir.Init.FileWriter do
   `{path, content}` tuples; this module writes them.
   """
 
-  alias Decidulixir.CLI.Formatter
+  require Logger
 
   @doc "Write a file only if it doesn't already exist."
   @spec write_if_missing(Path.t(), String.t()) :: :ok | :skipped
   def write_if_missing(path, content) do
     if File.exists?(path) do
-      Formatter.warn("#{relative(path)} (already exists, skipping)")
+      Logger.debug("#{relative(path)} (already exists, skipping)")
       :skipped
     else
       ensure_dir!(path)
       File.write!(path, content)
-      Formatter.success("  Created #{relative(path)}")
+      Logger.info("Created #{relative(path)}")
       :ok
     end
   end
@@ -27,7 +27,7 @@ defmodule Decidulixir.Init.FileWriter do
   def write_overwrite(path, content) do
     ensure_dir!(path)
     File.write!(path, content)
-    Formatter.success("  Updated #{relative(path)}")
+    Logger.info("Updated #{relative(path)}")
     :ok
   end
 
@@ -54,11 +54,11 @@ defmodule Decidulixir.Init.FileWriter do
 
       unless String.contains?(content, entry) do
         File.write!(gitignore_path, content <> "\n#{entry}\n")
-        Formatter.success("  Added #{entry} to .gitignore")
+        Logger.info("Added #{entry} to .gitignore")
       end
     else
       File.write!(gitignore_path, "#{entry}\n")
-      Formatter.success("  Created .gitignore with #{entry}")
+      Logger.info("Created .gitignore with #{entry}")
     end
 
     :ok
@@ -88,15 +88,15 @@ defmodule Decidulixir.Init.FileWriter do
           )
 
         File.write!(path, updated)
-        Formatter.success("  Updated deciduous section in #{relative(path)}")
+        Logger.info("Updated deciduous section in #{relative(path)}")
       else
         # Append
         File.write!(path, content <> "\n\n#{full_section}\n")
-        Formatter.success("  Appended deciduous section to #{relative(path)}")
+        Logger.info("Appended deciduous section to #{relative(path)}")
       end
     else
       File.write!(path, full_section <> "\n")
-      Formatter.success("  Created #{relative(path)}")
+      Logger.info("Created #{relative(path)}")
     end
 
     :ok
@@ -110,18 +110,21 @@ defmodule Decidulixir.Init.FileWriter do
     files
     |> Enum.map(fn {rel_path, content} ->
       abs_path = Path.join(project_root, rel_path)
-
-      if overwrite? do
-        write_overwrite(abs_path, content)
-        1
-      else
-        case write_if_missing(abs_path, content) do
-          :ok -> 1
-          :skipped -> 0
-        end
-      end
+      write_one(abs_path, content, overwrite?)
     end)
     |> Enum.sum()
+  end
+
+  defp write_one(path, content, true) do
+    write_overwrite(path, content)
+    1
+  end
+
+  defp write_one(path, content, false) do
+    case write_if_missing(path, content) do
+      :ok -> 1
+      :skipped -> 0
+    end
   end
 
   defp ensure_dir!(path) do

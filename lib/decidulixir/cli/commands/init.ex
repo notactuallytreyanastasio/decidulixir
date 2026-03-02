@@ -3,7 +3,7 @@ defmodule Decidulixir.CLI.Commands.Init do
 
   @behaviour Decidulixir.CLI.Command
 
-  alias Decidulixir.CLI.Formatter
+  require Logger
 
   @impl true
   def name, do: "init"
@@ -23,13 +23,15 @@ defmodule Decidulixir.CLI.Commands.Init do
   end
 
   @impl true
-  def run(%{opts: opts}) do
+  def execute(%{opts: opts}) do
     backends = build_backends(opts)
 
     case Decidulixir.Init.init_project(backends: backends) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, msg} ->
-        Formatter.error(msg)
+        Logger.error(msg)
         {:error, msg}
     end
   end

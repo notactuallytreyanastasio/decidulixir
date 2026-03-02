@@ -8,6 +8,8 @@ defmodule Decidulixir.Init.Templates.Claude do
 
   @behaviour Decidulixir.Init.Backend
 
+  alias Decidulixir.Init.{FileWriter, Templates.Shared}
+
   @impl true
   def name, do: "Claude Code"
 
@@ -24,8 +26,8 @@ defmodule Decidulixir.Init.Templates.Claude do
   @impl true
   def post_init(project_root) do
     claude_md_path = Path.join(project_root, "CLAUDE.md")
-    section = Decidulixir.Init.Templates.Shared.claude_md_section()
-    Decidulixir.Init.FileWriter.update_markdown_section(claude_md_path, section)
+    section = Shared.claude_md_section()
+    FileWriter.update_markdown_section(claude_md_path, section)
   end
 
   @doc "Returns all slash command files."

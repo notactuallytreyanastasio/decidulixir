@@ -1,8 +1,9 @@
 defmodule Decidulixir.InitTest do
   use ExUnit.Case, async: true
 
-  alias Decidulixir.Init
+  alias Decidulixir.{CheckUpdate, Init, Update}
   alias Decidulixir.Init.{FileWriter, Validator, Version}
+  alias Decidulixir.Init.Templates.{Claude, OpenCode, Shared, Windsurf}
 
   @moduletag :tmp_dir
 
@@ -140,8 +141,7 @@ defmodule Decidulixir.InitTest do
 
   describe "Templates" do
     test "Claude backend returns files" do
-      files = Decidulixir.Init.Templates.Claude.files("/tmp/test")
-      assert length(files) > 0
+      [_ | _] = files = Claude.files("/tmp/test")
       paths = Enum.map(files, &elem(&1, 0))
       assert ".claude/commands/decision.md" in paths
       assert ".claude/commands/recover.md" in paths
@@ -152,32 +152,32 @@ defmodule Decidulixir.InitTest do
     end
 
     test "OpenCode backend returns files" do
-      files = Decidulixir.Init.Templates.OpenCode.files("/tmp/test")
+      files = OpenCode.files("/tmp/test")
       paths = Enum.map(files, &elem(&1, 0))
       assert ".opencode/commands/decision.md" in paths
       assert ".opencode/opencode.json" in paths
     end
 
     test "Windsurf backend returns files" do
-      files = Decidulixir.Init.Templates.Windsurf.files("/tmp/test")
+      files = Windsurf.files("/tmp/test")
       paths = Enum.map(files, &elem(&1, 0))
       assert ".windsurf/hooks.json" in paths
       assert ".windsurf/rules/deciduous.md" in paths
     end
 
     test "Shared returns infrastructure files" do
-      files = Decidulixir.Init.Templates.Shared.files("/tmp/test")
+      files = Shared.files("/tmp/test")
       paths = Enum.map(files, &elem(&1, 0))
       assert ".deciduous/config.toml" in paths
       assert "docs/graph-data.json" in paths
     end
 
     test "Claude detect? checks for .claude dir" do
-      refute Decidulixir.Init.Templates.Claude.detect?("/nonexistent")
+      refute Claude.detect?("/nonexistent")
     end
 
     test "all templates have non-empty content" do
-      for {_path, content} <- Decidulixir.Init.Templates.Claude.files("/tmp") do
+      for {_path, content} <- Claude.files("/tmp") do
         assert String.length(content) > 0
       end
     end
@@ -224,8 +224,8 @@ defmodule Decidulixir.InitTest do
       assert String.contains?(gitignore, ".deciduous/")
 
       # Check version
-      {:ok, version} = Decidulixir.Init.Version.installed(tmp)
-      assert version == Decidulixir.Init.Version.current()
+      {:ok, version} = Version.installed(tmp)
+      assert version == Version.current()
     end
 
     test "is idempotent", %{tmp_dir: tmp} do
@@ -265,25 +265,25 @@ defmodule Decidulixir.InitTest do
       File.write!(decision_path, "modified content")
 
       # Update should overwrite
-      assert :ok = Decidulixir.Update.update(project_root: tmp)
+      assert :ok = Update.update(project_root: tmp)
       content = File.read!(decision_path)
       refute content == "modified content"
       assert String.contains?(content, "decision")
     end
 
     test "fails when no backends installed", %{tmp_dir: tmp} do
-      assert {:error, _} = Decidulixir.Update.update(project_root: tmp)
+      assert {:error, _} = Update.update(project_root: tmp)
     end
   end
 
   describe "CheckUpdate" do
     test "reports up to date", %{tmp_dir: tmp} do
       Init.init_project(backends: [:claude], project_root: tmp)
-      assert :up_to_date = Decidulixir.CheckUpdate.check(project_root: tmp)
+      assert :up_to_date = CheckUpdate.check(project_root: tmp)
     end
 
     test "reports not initialized", %{tmp_dir: tmp} do
-      assert :not_initialized = Decidulixir.CheckUpdate.check(project_root: tmp)
+      assert :not_initialized = CheckUpdate.check(project_root: tmp)
     end
 
     test "reports update available", %{tmp_dir: tmp} do
@@ -291,7 +291,7 @@ defmodule Decidulixir.InitTest do
       # Write old version
       version_path = Path.join([tmp, ".deciduous", ".version"])
       File.write!(version_path, "0.0.1")
-      assert :update_available = Decidulixir.CheckUpdate.check(project_root: tmp)
+      assert :update_available = CheckUpdate.check(project_root: tmp)
     end
   end
 end

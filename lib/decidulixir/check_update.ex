@@ -3,7 +3,8 @@ defmodule Decidulixir.CheckUpdate do
   Version comparison for update detection.
   """
 
-  alias Decidulixir.CLI.Formatter
+  require Logger
+
   alias Decidulixir.Init.Version
 
   @doc """
@@ -20,16 +21,16 @@ defmodule Decidulixir.CheckUpdate do
         current = Version.current()
 
         if installed == current do
-          Formatter.success("Decidulixir tooling is up to date (v#{current})")
+          Logger.info("Decidulixir tooling is up to date (v#{current})")
           :up_to_date
         else
-          Formatter.warn("Update available: v#{installed} -> v#{current}")
+          Logger.warning("Update available: v#{installed} -> v#{current}")
           IO.puts("  Run 'mix decidulixir update' to update tooling files.")
           :update_available
         end
 
       :not_found ->
-        Formatter.warn("Decidulixir not initialized — run 'mix decidulixir init' first")
+        Logger.warning("Decidulixir not initialized — run 'mix decidulixir init' first")
         :not_initialized
     end
   end

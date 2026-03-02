@@ -6,7 +6,8 @@ defmodule Decidulixir.Update do
   Separate from Init — this is the regeneration path.
   """
 
-  alias Decidulixir.CLI.Formatter
+  require Logger
+
   alias Decidulixir.Init.{FileWriter, Validator, Version}
   alias Decidulixir.Init.Templates.Shared
 
@@ -27,7 +28,7 @@ defmodule Decidulixir.Update do
     project_root = Keyword.get_lazy(opts, :project_root, fn -> File.cwd!() end)
 
     unless Validator.initialized?(project_root) do
-      Formatter.warn(".deciduous/ not found — run 'mix decidulixir init' first")
+      Logger.warning(".deciduous/ not found — run 'mix decidulixir init' first")
     end
 
     # Auto-detect installed backends
@@ -36,12 +37,12 @@ defmodule Decidulixir.Update do
       |> Enum.filter(fn {_key, module} -> module.detect?(project_root) end)
 
     if installed == [] do
-      Formatter.error("no assistant integration found — run 'mix decidulixir init' first")
+      Logger.error("no assistant integration found — run 'mix decidulixir init' first")
       {:error, "no backends installed"}
     else
-      names = installed |> Enum.map(fn {_key, mod} -> mod.name() end) |> Enum.join(" + ")
-      Formatter.info("\nUpdating Decidulixir tooling for #{names}...")
-      Formatter.info("  Directory: #{project_root}\n")
+      names = Enum.map_join(installed, " + ", fn {_key, mod} -> mod.name() end)
+      Logger.info("Updating Decidulixir tooling for #{names}...")
+      Logger.info("Directory: #{project_root}")
 
       # Overwrite backend files
       Enum.each(installed, fn {_key, module} ->
@@ -61,7 +62,7 @@ defmodule Decidulixir.Update do
       # Update version
       Version.write(project_root)
 
-      Formatter.success("\nTooling updated for #{names}!")
+      Logger.info("Tooling updated for #{names}!")
       :ok
     end
   end

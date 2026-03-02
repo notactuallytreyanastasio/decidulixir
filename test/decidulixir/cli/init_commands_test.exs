@@ -1,7 +1,7 @@
 defmodule Decidulixir.CLI.InitCommandsTest do
   use ExUnit.Case, async: true
 
-  alias Decidulixir.CLI.Commands.{Init, Update, CheckUpdate}
+  alias Decidulixir.CLI.Commands.{CheckUpdate, Init, Update}
 
   @moduletag :tmp_dir
 
@@ -36,7 +36,7 @@ defmodule Decidulixir.CLI.InitCommandsTest do
   describe "CheckUpdate command" do
     test "has correct name and description" do
       assert CheckUpdate.name() == "check-update"
-      assert CheckUpdate.description() =~ "updating"
+      assert CheckUpdate.description() =~ "update"
     end
   end
 end

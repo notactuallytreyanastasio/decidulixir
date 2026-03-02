@@ -5,7 +5,8 @@ defmodule Decidulixir.Init do
   Pipeline: validate -> setup infrastructure -> get backend files -> write -> post_init.
   """
 
-  alias Decidulixir.CLI.Formatter
+  require Logger
+
   alias Decidulixir.Init.{FileWriter, Validator, Version}
   alias Decidulixir.Init.Templates.Shared
 
@@ -36,8 +37,8 @@ defmodule Decidulixir.Init do
       backend_names = backends |> Enum.map(&backend_module/1) |> Enum.map(& &1.name())
       name_str = Enum.join(backend_names, " + ")
 
-      Formatter.info("\nInitializing Decidulixir for #{name_str}...")
-      Formatter.info("  Directory: #{project_root}\n")
+      Logger.info("Initializing Decidulixir for #{name_str}...")
+      Logger.info("  Directory: #{project_root}")
 
       # 1. Create .deciduous infrastructure
       setup_infrastructure(project_root)
@@ -74,7 +75,7 @@ defmodule Decidulixir.Init do
       # 8. Write version
       Version.write(project_root)
 
-      Formatter.success("\nDecidulixir initialized for #{name_str}!")
+      Logger.info("Decidulixir initialized for #{name_str}!")
       print_next_steps()
       :ok
     end
@@ -98,7 +99,7 @@ defmodule Decidulixir.Init do
     windsurf_dir = Path.join(project_root, ".windsurf")
 
     if :windsurf not in backends and File.dir?(windsurf_dir) do
-      Formatter.info("Detected .windsurf directory — adding Windsurf integration")
+      Logger.info("Detected .windsurf directory — adding Windsurf integration")
       backends ++ [:windsurf]
     else
       backends
@@ -113,14 +114,11 @@ defmodule Decidulixir.Init do
       {".windsurf/hooks/post-commit-reminder.sh", :windsurf}
     ]
 
-    Enum.each(hook_patterns, fn {rel_path, backend_key} ->
-      if backend_key in backends do
-        abs_path = Path.join(project_root, rel_path)
-
-        if File.exists?(abs_path) do
-          File.chmod!(abs_path, 0o755)
-        end
-      end
+    hook_patterns
+    |> Enum.filter(fn {_path, backend_key} -> backend_key in backends end)
+    |> Enum.each(fn {rel_path, _key} ->
+      abs_path = Path.join(project_root, rel_path)
+      if File.exists?(abs_path), do: File.chmod!(abs_path, 0o755)
     end)
   end
 

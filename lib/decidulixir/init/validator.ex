@@ -10,12 +10,10 @@ defmodule Decidulixir.Init.Validator do
   def validate(opts) do
     backends = Keyword.get(opts, :backends, [])
 
-    cond do
-      backends == [] ->
-        {:error, "at least one backend must be selected (--claude, --opencode, or --windsurf)"}
-
-      true ->
-        :ok
+    if backends == [] do
+      {:error, "at least one backend must be selected (--claude, --opencode, or --windsurf)"}
+    else
+      :ok
     end
   end
 
